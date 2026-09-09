@@ -1,0 +1,168 @@
+name: CI
+
+# A red pipeline blocks merge (Phase 0 section 3.1). Every job here is a gate,
+# not a report: nothing is `continue-on-error`.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.33.0'
+
+jobs:
+  quality:
+    name: Lint, typecheck and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate the Prisma client
+        run: pnpm --filter @modex/api prisma:generate
+        env:
+          DATABASE_URL: postgresql://placeholder@localhost:5432/placeholder
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  design-system:
+    name: Design system gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Every approved colour pairing against its WCAG 2.2 minimum. A pairing
+      # that is not declared in packages/ui/src/tokens/contrast.ts is not an
+      # approved pairing.
+      - name: Contrast budget
+        run: pnpm test:contrast
+
+      # Blocks sourced from 21st.dev arrive carrying their author's palette.
+      # This is what proves the re-theme was finished rather than started.
+      - name: No vendor colours outside the token layer
+        run: pnpm check:vendor-hex
+
+      # tokens.css is generated from palette.ts; a hand-edit would drift.
+      - name: Design tokens are regenerated, not hand-edited
+        run: |
+          pnpm --filter @modex/ui build:tokens
+          if ! git diff --quiet -- packages/ui/src/tokens/tokens.css; then
+            echo "::error::tokens.css is out of date. Run: pnpm --filter @modex/ui build:tokens"
+            git diff -- packages/ui/src/tokens/tokens.css
+            exit 1
+          fi
+
+  security:
+    name: Security gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the secret scan sees what a push would carry.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Secret scan
+        run: pnpm check:secrets
+
+      # Destructive migrations are refused unless they declare they have been
+      # through expand/contract. Blue-green means old and new code share a
+      # schema for minutes at a time.
+      - name: Migration safety
+        run: pnpm check:migrations
+
+      - name: Dependency audit
+        run: pnpm audit --audit-level high
+
+      - name: Static analysis (SAST)
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: modex
+          POSTGRES_PASSWORD: modex
+          POSTGRES_DB: modex_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U modex"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://modex:modex@localhost:5432/modex_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @modex/api prisma:generate
+      - run: pnpm --filter @modex/api prisma:migrate
+
+      # These prove the guarantees the database enforces rather than the
+      # application: append-only audit, the revocation cascade, and the
+      # effective-dated timeline under a real transaction.
+      - run: pnpm --filter @modex/api test:integration
+
+      - name: Seed runs against a real schema
+        run: pnpm --filter @modex/api seed
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @modex/api prisma:generate
+        env:
+          DATABASE_URL: postgresql://placeholder@localhost:5432/placeholder
+      - run: pnpm build
+        env:
+          NEXT_PUBLIC_API_ORIGIN: http://localhost:3001
