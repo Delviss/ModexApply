@@ -1,0 +1,28 @@
+{
+  "name": "@modex/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared TypeScript, ESLint and Prettier configuration for the Modex Apply monorepo.",
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.node.json",
+    "tsconfig.react.json",
+    "eslint.config.mjs"
+  ],
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.node.json": "./tsconfig.node.json",
+    "./tsconfig.react.json": "./tsconfig.react.json",
+    "./eslint": "./eslint.config.mjs"
+  },
+  "scripts": {
+    "lint": "echo \"@modex/config: nothing to lint\"",
+    "typecheck": "echo \"@modex/config: no sources\"",
+    "test": "echo \"@modex/config: no tests\""
+  },
+  "dependencies": {
+    "@eslint/js": "^9.39.0",
+    "typescript-eslint": "^8.46.0",
+    "eslint": "^9.39.0"
+  }
+}

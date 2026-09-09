@@ -1,0 +1,232 @@
+/*
+ * GENERATED FILE — do not edit.
+ * Source: packages/ui/src/tokens/palette.ts
+ * Regenerate: pnpm --filter @modex/ui build:tokens
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Brand — Red Velvet. An accent for action and identity, never a wash. */
+  --mx-brand-50: #FDF3F5;
+  --mx-brand-100: #FAE3E8;
+  --mx-brand-200: #F4C6CF;
+  --mx-brand-300: #EA9BAB;
+  --mx-brand-400: #DC6980;
+  --mx-brand-500: #C63F5A;
+  --mx-brand-600: #A72740;
+  --mx-brand-700: #8A1E33;
+  --mx-brand-800: #6E1828;
+  --mx-brand-900: #55131F;
+  --mx-brand-950: #300A11;
+
+  /* Neutrals — the "white" half, warm-tinted on purpose. */
+  --mx-surface: #FFFFFF;
+  --mx-canvas: #FBF9F9;
+  --mx-subtle: #F3EFF0;
+  --mx-border: #E4DDDF;
+  --mx-border-strong: #C7BCBF;
+  --mx-border-input: #8C7E82;
+  --mx-ink-500: #8C7E82;
+  --mx-ink-600: #5A4F52;
+  --mx-ink-800: #2E2629;
+  --mx-ink-900: #1A1416;
+
+  /* Semantics. Brand red never signals an error; danger is orange-shifted. */
+  --mx-success: #1F7A4D;
+  --mx-success-text: #1F7A4D;
+  --mx-warning: #B5791C;
+  --mx-warning-text: #8A5A0F;
+  --mx-danger: #D64B2A;
+  --mx-danger-text: #B83C1E;
+  --mx-info: #2563A8;
+  --mx-info-text: #2563A8;
+
+  /* Roles — what components actually reference. */
+  --mx-action: var(--mx-brand-600);
+  --mx-action-hover: var(--mx-brand-700);
+  --mx-action-fg: var(--mx-surface);
+  --mx-action-subtle: var(--mx-brand-50);
+  --mx-action-subtle-fg: var(--mx-brand-700);
+  --mx-link: var(--mx-brand-600);
+  --mx-text: var(--mx-ink-900);
+  --mx-text-muted: var(--mx-ink-600);
+  --mx-text-disabled: var(--mx-ink-500);
+  --mx-text-heading: var(--mx-ink-800);
+  --mx-placeholder: var(--mx-ink-600);
+
+  /* Data visualisation — brand-anchored, not a rainbow. */
+  --mx-viz-1: #A72740;
+  --mx-viz-2: #2563A8;
+  --mx-viz-3: #1F7A4D;
+  --mx-viz-4: #B5791C;
+  --mx-viz-5: #6E4C8F;
+  --mx-viz-6: #0F7C8A;
+  --mx-viz-seq-1: #FDF3F5;
+  --mx-viz-seq-2: #F4C6CF;
+  --mx-viz-seq-3: #DC6980;
+  --mx-viz-seq-4: #A72740;
+  --mx-viz-seq-5: #6E1828;
+
+  /* Type */
+  --mx-font-sans: 'Inter var', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mx-font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --mx-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --mx-text-xs: 0.75rem;
+  --mx-text-sm: 0.875rem;
+  --mx-text-base: 1rem;
+  --mx-text-md: 1.125rem;
+  --mx-text-lg: 1.25rem;
+  --mx-text-xl: 1.5rem;
+  --mx-text-2xl: 1.875rem;
+  --mx-text-3xl: 2.25rem;
+  --mx-text-4xl: 3rem;
+  --mx-leading-tight: 1.2;
+  --mx-leading-snug: 1.35;
+  --mx-leading-body: 1.55;
+  --mx-leading-relaxed: 1.7;
+  --mx-weight-regular: 400;
+  --mx-weight-medium: 500;
+  --mx-weight-semibold: 600;
+  --mx-weight-bold: 700;
+
+  /* Space — 4px base grid */
+  --mx-space-1: 4px;
+  --mx-space-2: 8px;
+  --mx-space-3: 12px;
+  --mx-space-4: 16px;
+  --mx-space-6: 24px;
+  --mx-space-8: 32px;
+  --mx-space-12: 48px;
+  --mx-space-16: 64px;
+  --mx-space-24: 96px;
+
+  /* Radius */
+  --mx-radius-control: 6px;
+  --mx-radius-card: 10px;
+  --mx-radius-sheet: 16px;
+  --mx-radius-pill: 9999px;
+
+  /* Elevation — three levels, warm-tinted shadows */
+  --mx-shadow-1: 0 1px 2px rgba(48, 10, 17, 0.06);
+  --mx-shadow-2: 0 4px 12px rgba(48, 10, 17, 0.10);
+  --mx-shadow-3: 0 16px 40px rgba(48, 10, 17, 0.16);
+
+  /* Motion */
+  --mx-motion-fast: 150ms;
+  --mx-motion-surface: 240ms;
+  --mx-motion-easing: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Focus — never removed */
+  --mx-focus-width: 2px;
+  --mx-focus-offset: 2px;
+  --mx-focus-color: var(--mx-brand-600);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+  
+    --mx-canvas: #14100F;
+    --mx-surface: #1E1819;
+    --mx-subtle: #241E1F;
+    --mx-elevated: #292122;
+    --mx-border: #3A3032;
+    --mx-border-strong: #544749;
+    --mx-border-input: #7E7073;
+    --mx-ink-500: #9A8D90;
+    --mx-ink-600: #BCAFB2;
+    --mx-ink-800: #E3DADC;
+    --mx-ink-900: #F2EBEC;
+  
+    --mx-success: #4FBF87;
+    --mx-success-text: #4FBF87;
+    --mx-warning: #E0A93F;
+    --mx-warning-text: #E0A93F;
+    --mx-danger: #F2795A;
+    --mx-danger-text: #F2795A;
+    --mx-info: #6FA8E8;
+    --mx-info-text: #6FA8E8;
+  
+    /* brand-600 fails contrast on dark ground, so actions move up the scale. */
+    --mx-action: #DC6980;
+    --mx-action-hover: #EA9BAB;
+    --mx-action-fg: #14100F;
+    --mx-action-subtle: #300A11;
+    --mx-action-subtle-fg: #EA9BAB;
+    --mx-link: #EA9BAB;
+    --mx-focus-color: #DC6980;
+  
+    --mx-viz-1: #DC6980;
+    --mx-viz-2: #6FA8E8;
+    --mx-viz-3: #4FBF87;
+    --mx-viz-4: #E0A93F;
+    --mx-viz-5: #A98BC7;
+    --mx-viz-6: #3FB6C4;
+  
+    --mx-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --mx-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --mx-shadow-3: 0 16px 40px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* An explicit choice wins over the system preference, in both directions. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --mx-canvas: #14100F;
+  --mx-surface: #1E1819;
+  --mx-subtle: #241E1F;
+  --mx-elevated: #292122;
+  --mx-border: #3A3032;
+  --mx-border-strong: #544749;
+  --mx-border-input: #7E7073;
+  --mx-ink-500: #9A8D90;
+  --mx-ink-600: #BCAFB2;
+  --mx-ink-800: #E3DADC;
+  --mx-ink-900: #F2EBEC;
+
+  --mx-success: #4FBF87;
+  --mx-success-text: #4FBF87;
+  --mx-warning: #E0A93F;
+  --mx-warning-text: #E0A93F;
+  --mx-danger: #F2795A;
+  --mx-danger-text: #F2795A;
+  --mx-info: #6FA8E8;
+  --mx-info-text: #6FA8E8;
+
+  /* brand-600 fails contrast on dark ground, so actions move up the scale. */
+  --mx-action: #DC6980;
+  --mx-action-hover: #EA9BAB;
+  --mx-action-fg: #14100F;
+  --mx-action-subtle: #300A11;
+  --mx-action-subtle-fg: #EA9BAB;
+  --mx-link: #EA9BAB;
+  --mx-focus-color: #DC6980;
+
+  --mx-viz-1: #DC6980;
+  --mx-viz-2: #6FA8E8;
+  --mx-viz-3: #4FBF87;
+  --mx-viz-4: #E0A93F;
+  --mx-viz-5: #A98BC7;
+  --mx-viz-6: #3FB6C4;
+
+  --mx-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --mx-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --mx-shadow-3: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Reduced motion is honoured globally — several sourced blocks animate. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mx-motion-fast: 1ms;
+    --mx-motion-surface: 1ms;
+  }
+}
+
+/* The focus ring is a platform guarantee, not a component decision. */
+.mx-focusable:focus-visible,
+.mx-focusable :focus-visible {
+  outline: var(--mx-focus-width) solid var(--mx-focus-color);
+  outline-offset: var(--mx-focus-offset);
+}
