@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '../primitives/button.js';
 import { Select } from '../primitives/field.js';
 import { cn } from '../lib/cn.js';

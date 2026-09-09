@@ -1,3 +1,5 @@
+'use client';
+
 import { useId, useState } from 'react';
 import {
   effectiveVerificationState,
@@ -71,9 +73,12 @@ export function VerificationBadge({
   const noun = OBJECT_NOUNS[claim.objectType];
 
   const verifier =
-    claim.verifierName !== null
-      ? `${claim.verifierName}${claim.verifierType === 'trust_agent' ? ' (Modex Trust)' : ''}`
-      : 'No verifier recorded';
+    claim.verifierName === null
+      ? 'No verifier recorded'
+      : // Only qualify a name that does not already say who it is.
+        claim.verifierType === 'trust_agent' && !/modex/i.test(claim.verifierName)
+        ? `${claim.verifierName}, Modex Trust`
+        : claim.verifierName;
 
   // Everything a reader needs is in the text, not only in the colour.
   const summaryLine = [
@@ -95,9 +100,7 @@ export function VerificationBadge({
       {variant === 'compact' ? (
         <button
           type="button"
-          className="mx-button"
-          data-variant="ghost"
-          data-size="sm"
+          className="mx-verification__disclosure"
           aria-expanded={expanded}
           aria-controls={detailsId}
           onClick={() => setExpanded((open) => !open)}

@@ -1,0 +1,602 @@
+// Modex Apply — platform core and Phase 1 catalogue.
+//
+// Two structural rules run through this schema:
+//
+//  1. **Append-only audit.** `AuditEvent` has no update or delete path. The
+//     application never issues one, and the migration additionally revokes the
+//     grants and installs a trigger, so the guarantee does not depend on
+//     application discipline. See `prisma/migrations/*_audit_append_only`.
+//
+//  2. **Effective dating.** `Program` is versioned: editing a live programme
+//     writes a new row and closes the previous one. An application snapshot
+//     taken last week therefore still resolves to exactly what the student was
+//     shown. `programKey` is stable across versions; `id` is not.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & access
+// ---------------------------------------------------------------------------
+
+enum Role {
+  student
+  guide
+  university_admin
+  university_staff
+  trust_agent
+  ops
+  finance
+  superadmin
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  emailVerifiedAt DateTime?
+  phone          String?
+  phoneVerifiedAt DateTime?
+  passwordHash   String?
+  /// Institution this user belongs to. Null for students, guides and Modex
+  /// staff. Every institution-scoped query is filtered on this, server-side.
+  organisationId String?
+  displayName    String
+  status         UserStatus @default(active)
+  mfaEnrolledAt  DateTime?
+  mfaSecretRef   String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organisation Institution?   @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  roles        UserRoleGrant[]
+  sessions     Session[]
+  consents     ConsentGrant[]
+
+  @@index([organisationId])
+  @@map("users")
+}
+
+enum UserStatus {
+  active
+  suspended
+  closed
+}
+
+model UserRoleGrant {
+  id        String   @id @default(uuid())
+  userId    String
+  role      Role
+  /// Role grants are themselves scoped: a `university_staff` grant is only
+  /// meaningful for one institution.
+  scopeId   String?
+  grantedBy String?
+  grantedAt DateTime @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role, scopeId])
+  @@index([userId])
+  @@map("user_role_grants")
+}
+
+model Session {
+  id             String    @id @default(uuid())
+  userId         String
+  /// Hash of the refresh token. The token itself is never stored.
+  refreshTokenHash String  @unique
+  /// Rotation chain: a reused parent is treated as theft and revokes the family.
+  parentId       String?
+  familyId       String
+  userAgent      String?
+  ipHash         String?
+  mfaSatisfied   Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  lastUsedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("sessions")
+}
+
+enum ConsentScope {
+  guide_access
+  document_share
+  university_submission
+  marketing_contact
+}
+
+model ConsentGrant {
+  id        String       @id @default(uuid())
+  userId    String
+  scope     ConsentScope
+  /// What the consent is scoped to — an institution, a guide, a document.
+  subjectId String?
+  grantedAt DateTime     @default(now())
+  expiresAt DateTime?
+  revokedAt DateTime?
+  /// Version of the wording the user actually agreed to.
+  noticeVersion String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scope])
+  @@map("consent_grants")
+}
+
+// ---------------------------------------------------------------------------
+// Audit — append only
+// ---------------------------------------------------------------------------
+
+enum ActorType {
+  user
+  system
+  connector
+}
+
+model AuditEvent {
+  id            String    @id @default(uuid())
+  actorId       String?
+  actorType     ActorType
+  action        String
+  objectType    String
+  objectId      String
+  timestamp     DateTime  @default(now())
+  authContext   Json
+  correlationId String
+  /// Hash over the previous event's integrityRef plus this event's payload, so
+  /// a deletion at the storage layer is detectable even though the application
+  /// has no delete path.
+  integrityRef  String
+  metadata      Json      @default("{}")
+
+  @@index([objectType, objectId])
+  @@index([actorId])
+  @@index([correlationId])
+  @@index([timestamp])
+  @@map("audit_events")
+}
+
+// ---------------------------------------------------------------------------
+// Idempotency
+// ---------------------------------------------------------------------------
+
+model IdempotencyRecord {
+  key           String   @id
+  /// Route + actor, so one client's key cannot replay another's response.
+  scope         String
+  requestHash   String
+  responseStatus Int?
+  responseBody  Json?
+  state         IdempotencyState @default(in_flight)
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+  expiresAt     DateTime
+
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}
+
+enum IdempotencyState {
+  in_flight
+  completed
+  failed
+}
+
+// ---------------------------------------------------------------------------
+// Institutions & partnership (Phase 1 §1)
+// ---------------------------------------------------------------------------
+
+enum VerificationState {
+  unverified
+  pending
+  verified
+  expired
+  revoked
+}
+
+enum VerificationStage {
+  legal_entity_check
+  official_domain_confirmation
+  partner_contact_confirmation
+  signed_contract
+  active
+}
+
+model Institution {
+  id                String            @id @default(uuid())
+  legalName         String
+  displayName       String
+  /// Official domains. Domain confirmation binds the institution to one of these.
+  domains           String[]
+  country           String            @db.Char(2)
+  verificationState VerificationState @default(unverified)
+  verificationStage VerificationStage?
+  brandColor        String?
+  websiteUrl        String?
+  description       String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  partnerships   InstitutionPartnership[]
+  campuses       Campus[]
+  contacts       InstitutionContact[]
+  programs       Program[]
+  domainChallenges DomainChallenge[]
+  evidence       VerificationEvidence[]
+  staff          User[]
+  syncRuns       SyncRun[]
+  imports        CatalogueImport[]
+
+  @@index([country])
+  @@index([verificationState])
+  @@map("institutions")
+}
+
+enum PartnershipStatus {
+  prospect
+  in_onboarding
+  contract_pending
+  active
+  suspended
+  revoked
+  expired
+}
+
+enum PartnershipScope {
+  catalogue_publish
+  direct_application
+  brand_use
+  guide_programme
+  offer_publication
+  scholarship_publication
+}
+
+model InstitutionPartnership {
+  id            String             @id @default(uuid())
+  institutionId String
+  status        PartnershipStatus  @default(prospect)
+  /// Pointer to the executed contract in secure storage — never the contract.
+  contractRef   String?
+  startDate     DateTime?
+  endDate       DateTime?
+  scopes        PartnershipScope[]
+  markets       String[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId, status])
+  @@map("institution_partnerships")
+}
+
+model Campus {
+  id            String  @id @default(uuid())
+  institutionId String
+  name          String
+  addressLine1  String?
+  city          String
+  country       String  @db.Char(2)
+  latitude      Float?
+  longitude     Float?
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  programs    Program[]
+
+  @@index([institutionId])
+  @@map("campuses")
+}
+
+enum ContactRole {
+  authorised_signatory
+  admissions
+  international_office
+  technical
+  finance
+}
+
+model InstitutionContact {
+  id                   String      @id @default(uuid())
+  institutionId        String
+  fullName             String
+  email                String
+  role                 ContactRole
+  isAuthorisedSignatory Boolean    @default(false)
+  verifiedAt           DateTime?
+  /// Single-use token hash for the on-domain confirmation email.
+  challengeTokenHash   String?
+  challengeExpiresAt   DateTime?
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@unique([institutionId, email])
+  @@map("institution_contacts")
+}
+
+enum ChallengeMethod {
+  dns_txt
+  email_on_domain
+}
+
+model DomainChallenge {
+  id            String          @id @default(uuid())
+  institutionId String
+  domain        String
+  method        ChallengeMethod
+  /// The value the institution must publish. Never written to a log.
+  token         String
+  issuedAt      DateTime        @default(now())
+  expiresAt     DateTime
+  confirmedAt   DateTime?
+  attempts      Int             @default(0)
+  lastError     String?
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId, domain])
+  @@map("domain_challenges")
+}
+
+/// Verification evidence is retained separately from the public record and is
+/// never exposed publicly (Phase 1 §2). Nothing in the public API selects this
+/// table.
+model VerificationEvidence {
+  id            String            @id @default(uuid())
+  institutionId String
+  stage         VerificationStage
+  /// Object-storage key. The document itself never enters the database.
+  documentRef   String?
+  /// Short, internal description of what was checked.
+  summary       String
+  collectedBy   String
+  collectedAt   DateTime          @default(now())
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId, stage])
+  @@map("verification_evidence")
+}
+
+// ---------------------------------------------------------------------------
+// Catalogue (Phase 1 §3)
+// ---------------------------------------------------------------------------
+
+enum SyncState {
+  synced
+  stale
+  pending_review
+  manual
+  failed
+}
+
+enum ProgramLevel {
+  foundation
+  undergraduate
+  postgraduate_taught
+  postgraduate_research
+  doctorate
+  pathway
+  short_course
+}
+
+enum ProgramStatus {
+  draft
+  in_review
+  published
+  unpublished
+  archived
+}
+
+enum StudyMode {
+  full_time
+  part_time
+  distance
+  hybrid
+}
+
+model Program {
+  id            String        @id @default(uuid())
+  /// Stable across every effective-dated version of the same programme.
+  programKey    String
+  institutionId String
+  campusId      String?
+  name          String
+  level         ProgramLevel
+  field         String
+  durationMonths Int
+  studyMode     StudyMode     @default(full_time)
+  description   String?
+  status        ProgramStatus @default(draft)
+  version       Int           @default(1)
+  effectiveFrom DateTime      @default(now())
+  /// Null means "current". A closed version is immutable history.
+  effectiveTo   DateTime?
+
+  // Provenance (Phase 1 §3) — on every catalogue record, without exception.
+  sourceUpdatedAt DateTime?
+  verifiedAt      DateTime?
+  expiresAt       DateTime?
+  syncState       SyncState @default(pending_review)
+  sourceRef       String?
+  reviewedBy      String?
+  /// Fields whose freshness SLA has lapsed. Blocking fields hide the record.
+  staleFields     String[]
+
+  createdAt DateTime @default(now())
+
+  institution  Institution   @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  campus       Campus?       @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  requirements Requirement[]
+  fees         ProgramFees[]
+
+  @@unique([programKey, version])
+  @@index([institutionId, status])
+  @@index([programKey, effectiveTo])
+  @@index([status, syncState])
+  @@map("programs")
+}
+
+enum IntakeStatus {
+  scheduled
+  open
+  closing_soon
+  closed
+  cancelled
+}
+
+model Intake {
+  id                  String       @id @default(uuid())
+  /// Intakes hang off the stable key, not off one programme version — an edit
+  /// to the description must not orphan the deadlines.
+  programKey          String
+  startDate           DateTime
+  applicationDeadline DateTime
+  status              IntakeStatus @default(scheduled)
+  capacity            Int?
+
+  sourceUpdatedAt DateTime?
+  verifiedAt      DateTime?
+  expiresAt       DateTime?
+  syncState       SyncState @default(pending_review)
+  sourceRef       String?
+  reviewedBy      String?
+  staleFields     String[]
+
+  requirements Requirement[]
+
+  @@index([programKey, applicationDeadline])
+  @@index([status])
+  @@map("intakes")
+}
+
+enum RuleType {
+  academic_qualification
+  gpa_minimum
+  english_language
+  work_experience
+  portfolio
+  interview
+  age_minimum
+  nationality_restriction
+  document_required
+}
+
+model Requirement {
+  id        String   @id @default(uuid())
+  programId String
+  intakeId  String?
+  ruleType  RuleType
+  /// Machine-readable rule. Validated against the contract's discriminated
+  /// union before write — an unparseable rule is rejected, never stored.
+  ruleJson  Json
+  /// The sentence a student actually reads. Mandatory: a rule with no summary
+  /// is a rule nobody can contest.
+  humanSummary String
+  sourceRef String
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  intake  Intake? @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+  @@map("requirements")
+}
+
+/// Money is integer minor units + ISO 4217 (Phase 0 §3.5). There is no decimal
+/// column here on purpose.
+model ProgramFees {
+  id         String  @id @default(uuid())
+  programId  String
+  intakeId   String?
+  tuitionMinor       Int
+  tuitionCurrency    String @db.Char(3)
+  applicationFeeMinor    Int?
+  applicationFeeCurrency String? @db.Char(3)
+  depositMinor       Int?
+  depositCurrency    String? @db.Char(3)
+
+  sourceUpdatedAt DateTime?
+  verifiedAt      DateTime?
+  expiresAt       DateTime?
+  syncState       SyncState @default(pending_review)
+  sourceRef       String?
+  reviewedBy      String?
+  staleFields     String[]
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+  @@map("program_fees")
+}
+
+// ---------------------------------------------------------------------------
+// Ingestion & freshness (Phase 1 §4)
+// ---------------------------------------------------------------------------
+
+enum SyncRunStatus {
+  running
+  succeeded
+  failed
+  partial
+}
+
+model SyncRun {
+  id            String        @id @default(uuid())
+  institutionId String
+  trigger       String
+  status        SyncRunStatus @default(running)
+  startedAt     DateTime      @default(now())
+  finishedAt    DateTime?
+  recordsSeen   Int           @default(0)
+  recordsChanged Int          @default(0)
+  recordsFailed Int           @default(0)
+  error         String?
+  correlationId String
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId, startedAt])
+  @@map("sync_runs")
+}
+
+enum ImportState {
+  dry_run
+  committed
+  discarded
+}
+
+/// Bulk import via structured file, with a dry-run diff before commit
+/// (Phase 1 §4). The diff is stored so the reviewer approves exactly what they
+/// were shown.
+model CatalogueImport {
+  id            String      @id @default(uuid())
+  institutionId String
+  fileName      String
+  /// Object-storage key for the uploaded file.
+  fileRef       String
+  state         ImportState @default(dry_run)
+  diff          Json
+  summary       Json
+  uploadedBy    String
+  uploadedAt    DateTime    @default(now())
+  committedBy   String?
+  committedAt   DateTime?
+  correlationId String
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId, state])
+  @@map("catalogue_imports")
+}
