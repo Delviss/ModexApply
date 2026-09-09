@@ -34,6 +34,12 @@
       "@swc/core",
       "sharp",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "multer": ">=2.3.0",
+      "sharp": ">=0.35.4",
+      "postcss": ">=8.5.18",
+      "deepmerge-ts": ">=8.0.0"
+    }
   }
 }
