@@ -163,6 +163,6 @@ jobs:
       - run: pnpm --filter @modex/api prisma:generate
         env:
           DATABASE_URL: postgresql://placeholder@localhost:5432/placeholder
+      # No API origin is set here on purpose: it is read at runtime, so a build
+      # that needed it would be a build tied to one environment.
       - run: pnpm build
-        env:
-          NEXT_PUBLIC_API_ORIGIN: http://localhost:3001

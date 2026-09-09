@@ -8,7 +8,24 @@ import type { Provenance, SyncState, VerificationClaim } from '@modex/contracts'
  * forwarded so a slow public page can be traced back through the API to the
  * catalogue query that made it slow.
  */
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? 'http://localhost:3001';
+/**
+ * Where the API lives.
+ *
+ * Read from `API_ORIGIN`, deliberately *not* `NEXT_PUBLIC_API_ORIGIN`. Next
+ * inlines `NEXT_PUBLIC_*` into the bundle at build time, which would mean:
+ *
+ *   1. The same artefact could not be promoted from staging to production —
+ *      each environment would need its own build, which is incompatible with
+ *      the blue/green deploys Phase 0 section 3.1 calls for.
+ *   2. A server-only base URL would be shipped to every browser for no reason.
+ *
+ * Resolved per call rather than at module scope, so a value supplied by the
+ * orchestrator at start-up is picked up without a rebuild. The public fallback
+ * is kept so an existing deployment does not break on upgrade.
+ */
+function apiOrigin(): string {
+  return process.env.API_ORIGIN ?? process.env.NEXT_PUBLIC_API_ORIGIN ?? 'http://localhost:3001';
+}
 
 export const DEFAULT_REVALIDATE_SECONDS = 60;
 
@@ -37,7 +54,7 @@ export async function apiGet<T>(
   path: string,
   options: { correlationId?: string; revalidate?: number } = {},
 ): Promise<T> {
-  const response = await fetch(`${API_ORIGIN}/v1${path}`, {
+  const response = await fetch(`${apiOrigin()}/v1${path}`, {
     headers: {
       accept: 'application/json',
       ...(options.correlationId === undefined ? {} : { 'x-correlation-id': options.correlationId }),

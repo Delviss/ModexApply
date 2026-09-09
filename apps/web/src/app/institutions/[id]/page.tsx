@@ -39,7 +39,10 @@ async function loadInstitution(id: string): Promise<PublicInstitution | null> {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const institution = await loadInstitution(id);
+
+  // See the note on the programme page: a throw here bypasses `error.tsx`, so
+  // metadata degrades rather than deciding the whole page's fate.
+  const institution = await loadInstitution(id).catch(() => null);
   if (institution === null) return { title: 'Institution not found' };
 
   return {

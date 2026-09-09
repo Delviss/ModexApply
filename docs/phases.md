@@ -73,7 +73,7 @@ no environment has been stood up, so blue/green and rollback are unproven.
 
 ---
 
-## Two bugs found while testing, and one design gap closed
+## Bugs found while testing
 
 **Ambiguous dates in the bulk importer.** `Date.parse` accepts `01/08/2026`,
 which is 1 August to the partner who typed it and 8 January to the runtime. On a
@@ -93,6 +93,27 @@ for a stale blocking field stayed servable at the edge with its old price for up
 to 60 seconds. Pages carrying money now use a 15-second window
 (`MONEY_REVALIDATE_SECONDS`), which is a documented trade-off rather than an
 inherited default.
+
+**A readiness probe that never failed.** `/v1/health/ready` answered `200` with
+`{"status":"degraded"}` when the database was unreachable. A load balancer reads
+the status code, not the body, so a broken instance would have stayed in
+rotation — precisely what readiness exists to prevent. It now returns `503`, and
+does not echo the underlying error, since the endpoint is unauthenticated and a
+connection string in the body would be a gift.
+
+**A server-side base URL baked into the bundle.** The API origin was read from
+`NEXT_PUBLIC_API_ORIGIN`, which Next inlines at build time. That ties a built
+artefact to one environment and makes promoting the same image from staging to
+production impossible — incompatible with the blue/green deploys Phase 0 §3.1
+calls for. Now `API_ORIGIN`, read at request time.
+
+**No error boundary, and metadata that could bypass one.** With the API
+unreachable, the SSR pages fell through to Next's default error screen — which
+on a trust platform leaves a student unable to tell "this university does not
+exist" from "our systems are briefly down". There is now a route error boundary
+saying which it is. Adding it surfaced a second problem: `generateMetadata` runs
+before the page and its throws bypass `error.tsx` entirely, so a metadata
+failure took down a page perfectly capable of handling it. Metadata now degrades.
 
 ---
 

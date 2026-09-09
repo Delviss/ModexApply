@@ -63,7 +63,14 @@ async function loadProgramme(programKey: string): Promise<LoadResult> {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { programKey } = await params;
-  const result = await loadProgramme(programKey);
+
+  // `generateMetadata` runs before the page and its throws bypass `error.tsx`
+  // entirely, so an unreachable API here would take down a page that is
+  // perfectly capable of handling the failure itself. Metadata degrades; the
+  // page decides what the reader sees.
+  const result = await loadProgramme(programKey).catch(
+    () => ({ kind: 'missing' }) as LoadResult,
+  );
   if (result.kind !== 'ok') return { title: 'Programme unavailable', robots: { index: false } };
 
   const { program } = result.data;
