@@ -134,16 +134,42 @@ export class InstitutionsService {
     };
   }
 
+  /**
+   * Public list.
+   *
+   * An explicit projection rather than the whole row: a public endpoint that
+   * returns whatever the ORM hands back starts leaking the moment somebody adds
+   * a column, and nobody reviews a migration for that.
+   */
   async list(query: { country?: string; verified?: boolean; cursor?: string; limit: number }) {
-    return this.prisma.institution.findMany({
+    const rows = await this.prisma.institution.findMany({
       where: {
         ...(query.country === undefined ? {} : { country: query.country.toUpperCase() }),
         ...(query.verified === true ? { verificationState: 'verified' as const } : {}),
+      },
+      select: {
+        id: true,
+        displayName: true,
+        country: true,
+        websiteUrl: true,
+        description: true,
+        verificationState: true,
+        verificationStage: true,
+        _count: { select: { campuses: true } },
       },
       orderBy: [{ displayName: 'asc' }, { id: 'asc' }],
       take: query.limit + 1,
       ...(query.cursor === undefined ? {} : { cursor: { id: query.cursor }, skip: 1 }),
     });
+
+    return rows.map(({ _count, ...institution }) => ({
+      ...institution,
+      campusCount: _count.campuses,
+      canDisplayVerifiedBadge: canPublishVerifiedBadge(
+        institution.verificationStage,
+        institution.verificationState,
+      ),
+    }));
   }
 
   /**

@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useRef, useState, type DragEvent } from 'react';
 import { Button } from '../primitives/button.js';
 import { Progress } from '../primitives/feedback.js';

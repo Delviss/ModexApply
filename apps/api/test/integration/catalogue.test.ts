@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { money } from '@modex/contracts';
-import type { PrismaClient } from '../../src/generated/prisma/index.js';
+import type { PrismaClient } from '@prisma/client';
 import { AppError } from '../../src/common/errors/app-error.js';
 import { validateTimeline } from '../../src/catalogue/effective-dating.js';
 import { TXT_RECORD_PREFIX } from '../../src/institutions/domain-verification.service.js';

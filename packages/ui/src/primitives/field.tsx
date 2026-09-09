@@ -1,3 +1,5 @@
+'use client';
+
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { cn } from '../lib/cn.js';
 import { AlertTriangleIcon } from './icons.js';

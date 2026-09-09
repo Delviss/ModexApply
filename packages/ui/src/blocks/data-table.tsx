@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/button.js';
 import { Input } from '../primitives/field.js';

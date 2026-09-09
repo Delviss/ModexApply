@@ -5,7 +5,7 @@ import { AppError } from '../../common/errors/app-error.js';
 import { currentContext } from '../../common/observability/request-context.js';
 import { PUBLIC_KEY } from '../decorators/access.decorators.js';
 import type { AuthenticatedRequest } from '../decorators/actor.decorator.js';
-import type { SessionResolver } from '../session-resolver.js';
+import { SessionResolver } from '../session-resolver.js';
 
 /**
  * Authenticates the request and attaches the evaluated access context.

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { PrismaClient } from '../../src/generated/prisma/index.js';
+import type { PrismaClient } from '@prisma/client';
 import { createHarness, createPrisma, resetDatabase, trustAgent, type Harness } from './harness.js';
 import { systemActor, toAuditActor } from '../../src/auth/audit-actor.js';
 

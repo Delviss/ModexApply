@@ -8,7 +8,7 @@
  * environment full of institutions that could never have been verified in
  * production.
  */
-import { PrismaClient } from '../src/generated/prisma/index.js';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 

@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo, useState, type ReactNode } from 'react';
 import { Input } from '../primitives/field.js';
 import { ChevronDownIcon, SearchIcon } from '../primitives/icons.js';

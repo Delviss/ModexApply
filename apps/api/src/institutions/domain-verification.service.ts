@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { Resolver } from 'node:dns/promises';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -24,13 +24,23 @@ export interface DnsLookup {
   resolveTxt(hostname: string): Promise<string[][]>;
 }
 
+/**
+ * Injection token for the resolver.
+ *
+ * `DnsLookup` is an interface, and an interface does not survive to runtime, so
+ * Nest has nothing to resolve the constructor parameter against. A token gives
+ * it something concrete while keeping the seam that lets tests drive DNS
+ * without touching the network.
+ */
+export const DNS_LOOKUP = Symbol('modex.DnsLookup');
+
 @Injectable()
 export class DomainVerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     /** Injected so tests can drive DNS without a network. */
-    private readonly dns: DnsLookup = new Resolver(),
+    @Optional() @Inject(DNS_LOOKUP) private readonly dns: DnsLookup = new Resolver(),
   ) {}
 
   async issueChallenge(

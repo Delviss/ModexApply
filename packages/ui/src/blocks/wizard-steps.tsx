@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/button.js';
 import { usePrefersReducedMotion } from '../lib/motion.js';

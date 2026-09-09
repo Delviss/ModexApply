@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../src/generated/prisma/index.js';
+import { PrismaClient } from '@prisma/client';
 import { AuditService } from '../../src/audit/audit.service.js';
 import { InstitutionsService } from '../../src/institutions/institutions.service.js';
 import { DomainVerificationService, type DnsLookup } from '../../src/institutions/domain-verification.service.js';

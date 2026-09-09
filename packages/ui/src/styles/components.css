@@ -18,6 +18,30 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * Prose links.
+ *
+ * Wrapped in `:where()` and limited to unclassed anchors, so this contributes
+ * zero specificity and cannot override a component's own colour -- an earlier
+ * version of this rule turned every sidebar nav item crimson, because
+ * `.mx-root a` outranks `.mx-nav__link`.
+ *
+ * Without it anchors fall back to browser blue and purple, which are outside
+ * the palette and outside the measured contrast budget entirely.
+ */
+:where(.mx-root a:not([class])) {
+  color: var(--mx-link);
+  text-decoration-color: color-mix(in srgb, var(--mx-link) 40%, transparent);
+  text-underline-offset: 2px;
+}
+:where(.mx-root a:not([class]):hover) {
+  text-decoration-color: currentColor;
+}
+/* A visited link must not drop out of the palette into browser purple. */
+:where(.mx-root a:not([class]):visited) {
+  color: var(--mx-link);
+}
+
 .mx-visually-hidden {
   position: absolute;
   width: 1px;
@@ -101,6 +125,9 @@
 .mx-badge {
   display: inline-flex;
   align-items: center;
+  /* Never stretch to a taller flex sibling: a pill that grows vertically stops
+     reading as a pill. */
+  align-self: flex-start;
   gap: var(--mx-space-1);
   padding: 2px var(--mx-space-2);
   border-radius: var(--mx-radius-pill);
@@ -651,6 +678,22 @@
  * ------------------------------------------------------------------------ */
 
 .mx-verification { display: inline-flex; flex-direction: column; gap: var(--mx-space-1); }
+.mx-verification__disclosure {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.mx-verification__disclosure:hover {
+  color: var(--mx-text);
+}
+
 .mx-verification__evidence {
   font-size: var(--mx-text-xs);
   color: var(--mx-text-muted);

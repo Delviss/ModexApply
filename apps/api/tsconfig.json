@@ -6,8 +6,16 @@
     "baseUrl": ".",
     "declaration": false,
     "declarationMap": false,
-    "noUnusedLocals": true
+    "noUnusedLocals": true,
+    "incremental": false
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test", "src/generated"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "src/generated"
+  ]
 }
