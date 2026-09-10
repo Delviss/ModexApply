@@ -1298,3 +1298,570 @@
   flex-direction: column;
   gap: var(--mx-space-4);
 }
+
+/* --------------------------------------------------------------------------
+ * Phase 3 — the guide network
+ * ------------------------------------------------------------------------ */
+
+/*
+ * The safety banner.
+ *
+ * The one place brand colour carries a message rather than an action, and it
+ * earns it by containing no primary action to compete with. Brand-tinted
+ * ground, brand left border, ink text — attention without alarm, because
+ * nothing has gone wrong; this is the standing rule of the room.
+ */
+.mx-safety {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mx-space-3);
+  padding: var(--mx-space-3) var(--mx-space-4);
+  background: var(--mx-brand-50);
+  border-inline-start: 3px solid var(--mx-brand-700);
+  border-radius: var(--mx-radius-control);
+  color: var(--mx-ink-800);
+}
+
+.mx-safety__icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--mx-brand-700);
+}
+
+.mx-safety__text {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  line-height: var(--mx-leading-body);
+}
+
+.mx-safety__action {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+/* The risk interstitial: warning ground above the message, message untouched. */
+.mx-risk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+  width: 100%;
+}
+
+.mx-risk__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mx-space-3);
+  padding: var(--mx-space-3);
+  border: 1px solid var(--mx-warning);
+  border-radius: var(--mx-radius-control);
+  background: var(--mx-surface);
+}
+
+.mx-risk__icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--mx-warning);
+}
+
+.mx-risk__title {
+  display: block;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-warning-text);
+}
+
+.mx-risk__text {
+  margin: var(--mx-space-1) 0 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text);
+}
+
+.mx-risk__action {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+/* The message under a flag is dimmed, never hidden: it is evidence, not noise. */
+.mx-risk__message {
+  opacity: 0.92;
+}
+
+/* The guide's own expiry clock. Amber at 30 days, red at 7 — the thresholds
+   come from the contracts package, so this and the sweep cannot disagree. */
+.mx-countdown {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mx-space-2);
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+
+.mx-countdown__icon {
+  flex: none;
+  display: inline-flex;
+  margin-top: 2px;
+}
+
+.mx-countdown[data-urgency='due'] {
+  color: var(--mx-warning-text);
+}
+
+.mx-countdown[data-urgency='urgent'],
+.mx-countdown[data-urgency='lapsed'] {
+  color: var(--mx-danger-text);
+}
+
+/* --------------------------------------------------------------------------
+ * Guide directory card
+ * ------------------------------------------------------------------------ */
+
+.mx-guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-3);
+}
+
+.mx-guide-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-3);
+}
+
+/* The verified ring is decoration on top of the badge, never instead of it. */
+.mx-guide-card__avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--mx-subtle);
+  color: var(--mx-ink-800);
+  font-weight: var(--mx-weight-semibold);
+  font-size: var(--mx-text-sm);
+}
+
+.mx-guide-card__avatar[data-verified='true'] {
+  box-shadow: 0 0 0 3px var(--mx-brand-100);
+}
+
+.mx-guide-card__identity {
+  min-width: 0;
+}
+
+.mx-guide-card__name {
+  margin: 0;
+  font-size: var(--mx-text-md);
+  font-weight: var(--mx-weight-semibold);
+  color: var(--mx-text-heading);
+}
+
+.mx-guide-card__meta {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+
+.mx-guide-card__online {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  margin-inline-start: auto;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-success-text);
+}
+
+.mx-guide-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mx-success);
+}
+
+.mx-guide-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mx-space-2);
+}
+
+.mx-guide-card__reason {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text);
+}
+
+.mx-guide-card__reason-label {
+  color: var(--mx-text-muted);
+}
+
+.mx-guide-card__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-space-4);
+  margin: 0;
+  font-size: var(--mx-text-sm);
+}
+
+.mx-guide-card__facts dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mx-space-1);
+  color: var(--mx-text-muted);
+}
+
+.mx-guide-card__facts dd {
+  margin: 0;
+  color: var(--mx-text);
+}
+
+.mx-guide-card__topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* --------------------------------------------------------------------------
+ * Chat
+ * ------------------------------------------------------------------------ */
+
+.mx-chat {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: var(--mx-space-4);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .mx-chat {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mx-chat__list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+}
+
+.mx-chat__list-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+  width: 100%;
+  padding: var(--mx-space-3);
+  text-align: start;
+  background: var(--mx-surface);
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-control);
+  cursor: pointer;
+  font: inherit;
+  color: var(--mx-text);
+}
+
+.mx-chat__list-item[data-selected='true'] {
+  background: var(--mx-brand-50);
+  border-color: var(--mx-brand-200);
+}
+
+.mx-chat__list-name {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  font-weight: var(--mx-weight-medium);
+}
+
+.mx-chat__list-subtitle,
+.mx-chat__list-preview {
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-chat__unread {
+  font-size: var(--mx-text-xs);
+  color: var(--mx-brand-700);
+}
+
+.mx-chat__pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-3);
+  min-width: 0;
+}
+
+.mx-chat__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mx-space-3);
+}
+
+/* Report and block sit here, visible: never more than one interaction from any
+   conversation surface (Phase 3 design spec). */
+.mx-chat__header-actions {
+  display: flex;
+  gap: var(--mx-space-2);
+}
+
+.mx-chat__messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-3);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--mx-space-3);
+  background: var(--mx-canvas);
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-surface);
+}
+
+.mx-chat__messages section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+}
+
+.mx-chat__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-3);
+  margin: var(--mx-space-2) 0;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+}
+
+.mx-chat__divider::before,
+.mx-chat__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--mx-border);
+}
+
+.mx-chat__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+}
+
+.mx-chat__row[data-mine='true'] {
+  flex-direction: row-reverse;
+}
+
+.mx-chat__bubble {
+  max-width: 42rem;
+  padding: var(--mx-space-3);
+  background: var(--mx-surface);
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-surface);
+}
+
+.mx-chat__bubble[data-mine='true'] {
+  background: var(--mx-brand-50);
+  border-color: var(--mx-brand-100);
+}
+
+.mx-chat__body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mx-chat__attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mx-space-1);
+  margin: var(--mx-space-2) 0 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+
+.mx-chat__time {
+  margin: var(--mx-space-1) 0 0;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+}
+
+/* A system message is visually distinct from anything a person said, so a
+   suspension notice cannot be mistaken for the guide's own words. */
+.mx-chat__system {
+  margin: 0;
+  padding: var(--mx-space-2) var(--mx-space-3);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-ink-800);
+  background: var(--mx-subtle);
+  border-radius: var(--mx-radius-control);
+  text-align: center;
+}
+
+.mx-chat__system[data-kind='guide_suspended'],
+.mx-chat__system[data-kind='risk_flagged'] {
+  color: var(--mx-danger-text);
+}
+
+.mx-chat__report {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mx-space-1);
+  padding: var(--mx-space-1) var(--mx-space-2);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+  cursor: pointer;
+  border-radius: var(--mx-radius-control);
+}
+
+.mx-chat__report:hover {
+  color: var(--mx-danger-text);
+}
+
+.mx-chat__typing {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+
+.mx-chat__composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--mx-space-2);
+}
+
+.mx-chat__input {
+  flex: 1;
+  padding: var(--mx-space-3);
+  font: inherit;
+  color: var(--mx-text);
+  background: var(--mx-surface);
+  border: 1px solid var(--mx-border-input);
+  border-radius: var(--mx-radius-control);
+  resize: vertical;
+}
+
+.mx-chat__disabled {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  margin: 0;
+  padding: var(--mx-space-3);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+  background: var(--mx-subtle);
+  border-radius: var(--mx-radius-control);
+}
+
+/* --------------------------------------------------------------------------
+ * Session booking
+ * ------------------------------------------------------------------------ */
+
+.mx-slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-3);
+}
+
+.mx-slots__days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-space-2);
+}
+
+.mx-slots__day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+  padding: var(--mx-space-2) var(--mx-space-3);
+  background: var(--mx-surface);
+  border: 1px solid var(--mx-border-input);
+  border-radius: var(--mx-radius-control);
+  font: inherit;
+  color: var(--mx-text);
+  cursor: pointer;
+}
+
+.mx-slots__day[data-selected='true'] {
+  background: var(--mx-brand-50);
+  border-color: var(--mx-brand-600);
+}
+
+/* A day with nothing free is greyed but still readable and still selectable —
+   the point is to show that the time is taken, not to hide it. */
+.mx-slots__day[data-empty='true'] {
+  color: var(--mx-text-muted);
+  background: var(--mx-subtle);
+}
+
+.mx-slots__day-count {
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+}
+
+.mx-slots__zone {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  margin: 0;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+}
+
+.mx-slots__list ul {
+  margin: var(--mx-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+}
+
+.mx-slots__list li {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-3);
+  padding: var(--mx-space-2) var(--mx-space-3);
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-control);
+}
+
+.mx-slots__list li[data-bookable='false'] {
+  background: var(--mx-subtle);
+  color: var(--mx-text-muted);
+}
+
+.mx-slots__time {
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-slots__topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-space-1);
+}
+
+.mx-slots__blocked {
+  margin-inline-start: auto;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+
+.mx-slots__list li .mx-button {
+  margin-inline-start: auto;
+}
+
+.mx-slots__empty {
+  margin: 0;
+  color: var(--mx-text-muted);
+}

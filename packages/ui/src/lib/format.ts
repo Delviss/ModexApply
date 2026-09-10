@@ -32,3 +32,23 @@ export function formatRelative(value: string | Date | null, now = new Date(), lo
   }
   return formatter.format(deltaSeconds, 'second');
 }
+
+/**
+ * The day divider in a chat thread: "Today", "Yesterday", or the date.
+ *
+ * The grouping itself is in the contracts package and is UTC, so a reader who
+ * changes timezone does not see their messages regroup. Only the *label* is
+ * local, which is the half a reader is entitled to see in their own terms.
+ */
+export function formatDayDivider(day: string, now = new Date(), locale = 'en-GB'): string {
+  const today = now.toISOString().slice(0, 10);
+  const yesterday = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+  if (day === today) return 'Today';
+  if (day === yesterday) return 'Yesterday';
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(`${day}T00:00:00.000Z`));
+}

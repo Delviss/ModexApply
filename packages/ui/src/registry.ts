@@ -210,6 +210,34 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     implementation: 'WizardSteps (validate hook)',
     note: 'Per-step validation pattern adopted: a step is unreachable until every step before it validates.',
   },
+  // Phase 3 (#5) archetypes.
+  {
+    registry: '@ruixen.ui/flexi-filter-table',
+    name: 'Flexi Filter Table (guide directory)',
+    section: 'messaging',
+    primary: false,
+    status: 'implemented',
+    implementation: 'GuideCard + directory facets (apps/web)',
+    note: 'Named for the guide directory facets — university, campus, programme, language, topic, home country. Rebuilt as cards rather than rows: a person is not a table row, and the verification badge and match reason do not fit in a cell.',
+  },
+  {
+    registry: '@felipemenezes098/card-05',
+    name: 'Stat Card (guide dashboard)',
+    section: 'data-display',
+    primary: false,
+    status: 'implemented',
+    implementation: 'StatCard (guide dashboard)',
+    note: 'Response rate, sessions and reward balance on the guide’s own dashboard, reusing the Phase 0 stat card rather than a second one.',
+  },
+  {
+    registry: '@ddoemonn/task-steps',
+    name: 'Task Steps (guide verification)',
+    section: 'forms',
+    primary: false,
+    status: 'implemented',
+    implementation: 'TaskSteps (guide verification pipeline)',
+    note: 'identity → current-student evidence → institution confirmation → active, with the error state carrying a suspension. Same component as the institution pipeline, which is the point: one verification vocabulary across the platform.',
+  },
   {
     registry: '@shadcnspace/progress-02',
     name: 'Onboarding Stepper Progress',
@@ -273,18 +301,18 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     name: 'Chat template',
     section: 'messaging',
     primary: true,
-    status: 'deferred',
-    implementation: null,
-    note: 'Primary two-pane guide messaging layout. Belongs to Phase 3 (#5); no messaging surface exists to theme it against yet.',
+    status: 'implemented',
+    implementation: 'ChatLayout',
+    note: 'The two-pane layout — conversation list plus thread. Rebuilt on the tokens with one addition the vendor has no equivalent for: the safety banner is rendered by the layout, so no surface that shows a thread can omit it.',
   },
   {
     registry: '@serafimcloud/agent-chat',
     name: 'Agent Chat',
     section: 'messaging',
     primary: false,
-    status: 'deferred',
-    implementation: null,
-    note: 'Composer, error states and attachment chips to lift in Phase 3.',
+    status: 'implemented',
+    implementation: 'MessageComposer + RiskInterstitial',
+    note: 'Composer and attachment chip lifted into the shell above. Its per-message error state is the right shape for the risk interstitial and carries a different meaning: the message is not broken, it is suspect, and it stays readable.',
   },
   {
     registry: '@preetsuthar17/messaging-conversation',
@@ -293,16 +321,16 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     primary: false,
     status: 'deferred',
     implementation: null,
-    note: 'Lightweight message list. Phase 3.',
+    note: 'Named as the lightweight read-only alternative for the Q&A view. Deferred: the public Q&A is a searchable accordion of moderated answers, not a transcript, so SearchableAccordion carries it and a second message list would be a second thing to keep accessible.',
   },
   {
     registry: '@cnippet-dev/v-skeleton-9',
     name: 'Chat Thread Skeleton',
     section: 'messaging',
     primary: false,
-    status: 'deferred',
-    implementation: null,
-    note: 'Thread loading state. Phase 3.',
+    status: 'implemented',
+    implementation: 'Skeleton (thread loading)',
+    note: 'Avatar and bubble shimmer built from the Skeleton primitive, whose animation is already gated on prefers-reduced-motion, rather than a second animated dependency.',
   },
 
   // §2.6 Scheduling — Phase 3 surface
@@ -311,18 +339,18 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     name: 'Appointment Picker Calendar',
     section: 'scheduling',
     primary: true,
-    status: 'deferred',
-    implementation: null,
-    note: 'Primary guide session booking. Phase 3 (#5).',
+    status: 'implemented',
+    implementation: 'SlotPicker',
+    note: 'Day tabs plus a scrollable slot list. Times render in the reader’s own zone with the zone named on screen, because a student in Lagos booking a guide in Manchester is the normal case here.',
   },
   {
     registry: '@cnippet-dev/v-calendar-8',
     name: 'Appointment Booking Calendar',
     section: 'scheduling',
     primary: false,
-    status: 'deferred',
-    implementation: null,
-    note: 'Greys out past and fully-booked days. Phase 3.',
+    status: 'implemented',
+    implementation: 'SlotPicker (unavailable states)',
+    note: 'Its greying of past and fully-booked days is the substantive half: it makes the no-overbooking rule visible instead of an error the student discovers after clicking. Every blocked slot is rendered, disabled, with the reason beside it.',
   },
   {
     registry: '@originui/calendar',
@@ -331,7 +359,7 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     primary: false,
     status: 'deferred',
     implementation: null,
-    note: 'Base primitive for deadline and intake pickers. Phase 1 admin uses native date inputs until it lands.',
+    note: 'Base primitive for deadline, intake and availability pickers. Still deferred: the guide’s availability editor uses native datetime inputs, which are keyboard- and screen-reader-correct on every platform without a dependency. Worth revisiting if a repeating-availability editor lands.',
   },
 
   // §2.7 Public / marketing
@@ -382,6 +410,34 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     implementation: 'FilterRail (apps/web) + Checkbox/RangeField',
     note: 'The configurable facet set — country, level, subject, intake, tuition, duration, language — as a persistent rail, with Sheet carrying it on mobile.',
   },
+  // Phase 3 (#5) archetypes.
+  {
+    registry: '@ruixen.ui/flexi-filter-table',
+    name: 'Flexi Filter Table (guide directory)',
+    section: 'messaging',
+    primary: false,
+    status: 'implemented',
+    implementation: 'GuideCard + directory facets (apps/web)',
+    note: 'Named for the guide directory facets — university, campus, programme, language, topic, home country. Rebuilt as cards rather than rows: a person is not a table row, and the verification badge and match reason do not fit in a cell.',
+  },
+  {
+    registry: '@felipemenezes098/card-05',
+    name: 'Stat Card (guide dashboard)',
+    section: 'data-display',
+    primary: false,
+    status: 'implemented',
+    implementation: 'StatCard (guide dashboard)',
+    note: 'Response rate, sessions and reward balance on the guide’s own dashboard, reusing the Phase 0 stat card rather than a second one.',
+  },
+  {
+    registry: '@ddoemonn/task-steps',
+    name: 'Task Steps (guide verification)',
+    section: 'forms',
+    primary: false,
+    status: 'implemented',
+    implementation: 'TaskSteps (guide verification pipeline)',
+    note: 'identity → current-student evidence → institution confirmation → active, with the error state carrying a suspension. Same component as the institution pipeline, which is the point: one verification vocabulary across the platform.',
+  },
   {
     registry: '@shadcnspace/progress-02',
     name: 'Onboarding Stepper Progress',
@@ -407,12 +463,14 @@ export function blocksByStatus(status: BlockStatus): readonly BlockEntry[] {
 }
 
 /**
- * Sections whose surfaces do not exist until a later phase. Deferring a primary
- * pick here is deliberate — there is nothing to theme it against yet — so the
- * package test scopes its "every primary pick is implemented" assertion to the
- * sections Phases 0 and 1 actually build.
+ * Sections whose surfaces do not exist until a later phase.
+ *
+ * Empty as of Phase 3: `messaging` and `scheduling` were the last two, and both
+ * now have surfaces to theme against. The list stays because the next phase that
+ * names blocks before building them will need it — and because an empty list is
+ * the strongest possible version of the assertion below.
  */
-export const LATER_PHASE_SECTIONS: readonly string[] = Object.freeze(['messaging', 'scheduling']);
+export const LATER_PHASE_SECTIONS: readonly string[] = Object.freeze([]);
 
 /** Every in-scope primary pick must be implemented — asserted by the package tests. */
 export function unimplementedPrimaryBlocks(): readonly BlockEntry[] {

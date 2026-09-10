@@ -3,7 +3,7 @@ export * from './registry.js';
 
 export { cn } from './lib/cn.js';
 export { usePrefersReducedMotion } from './lib/motion.js';
-export { formatDate, formatRelative } from './lib/format.js';
+export { formatDate, formatDayDivider, formatRelative } from './lib/format.js';
 
 // Primitives
 export * from './primitives/icons.js';
@@ -47,6 +47,19 @@ export {
 } from './blocks/searchable-accordion.js';
 export { HeroSection, type HeroAction, type HeroSectionProps } from './blocks/hero-section.js';
 export { Sheet, type SheetProps } from './blocks/sheet.js';
+export { GuideCard, type GuideCardProps } from './blocks/guide-card.js';
+export {
+  ChatLayout,
+  ConversationList,
+  MessageComposer,
+  MessageThread,
+  type ChatConversationSummary,
+  type ChatLayoutProps,
+  type ConversationListProps,
+  type MessageComposerProps,
+  type MessageThreadProps,
+} from './blocks/chat.js';
+export { SlotPicker, type BookableSlot, type SlotPickerProps } from './blocks/slot-picker.js';
 
 // Signature components — Modex-specific, built rather than sourced (§2.9).
 export {
@@ -69,3 +82,6 @@ export {
   type CompletenessMeterProps,
 } from './signature/completeness-meter.js';
 export { ScanStatePill, type ScanStatePillProps } from './signature/scan-state-pill.js';
+export { SafetyBanner, type SafetyBannerProps } from './signature/safety-banner.js';
+export { RiskInterstitial, type RiskInterstitialProps } from './signature/risk-interstitial.js';
+export { ExpiryCountdown, type ExpiryCountdownProps } from './signature/expiry-countdown.js';
