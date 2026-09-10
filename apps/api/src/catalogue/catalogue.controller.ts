@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { z } from 'zod';
 import {
   MoneySchema,
@@ -144,11 +144,5 @@ export class CatalogueController {
       intakeId: body.intakeId ?? null,
       sourceRef: body.sourceRef ?? null,
     });
-  }
-
-  @Get('programmes')
-  @Public()
-  async search(@Query('institutionId') institutionId?: string) {
-    return { data: institutionId === undefined ? [] : [], note: 'Catalogue search lands in Phase 2 (#4).' };
   }
 }

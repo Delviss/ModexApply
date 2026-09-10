@@ -48,6 +48,11 @@ export const PERMISSIONS = [
   'requirement:write',
   'catalogue:import',
   'catalogue:sync',
+  'profile:read',
+  'profile:write',
+  'document:read',
+  'document:write',
+  'document:delete',
   'guide:read',
   'guide:verify',
   'application:read',
@@ -67,7 +72,18 @@ export type Permission = (typeof PERMISSIONS)[number];
  * the failure mode this table exists to prevent (Phase 1 §2).
  */
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
-  student: ['institution:read', 'program:read', 'application:read', 'application:write', 'offer:read'],
+  student: [
+    'institution:read',
+    'program:read',
+    'profile:read',
+    'profile:write',
+    'document:read',
+    'document:write',
+    'document:delete',
+    'application:read',
+    'application:write',
+    'offer:read',
+  ],
   guide: ['institution:read', 'program:read'],
   university_staff: [
     'institution:read',

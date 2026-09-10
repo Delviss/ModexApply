@@ -11,3 +11,7 @@ export * from './domain/requirements.js';
 export * from './domain/eligibility.js';
 export * from './domain/institution.js';
 export * from './domain/catalogue.js';
+export * from './domain/grades.js';
+export * from './domain/student.js';
+export * from './domain/documents.js';
+export * from './domain/search.js';
