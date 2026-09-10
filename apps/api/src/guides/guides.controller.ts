@@ -5,6 +5,7 @@ import {
   GUIDE_TOPICS,
   PROGRAM_LEVELS,
   type AccessContext,
+  type GuideTopic,
 } from '@modex/contracts';
 import { Actor } from '../auth/decorators/actor.decorator.js';
 import { RequirePermissions } from '../auth/decorators/access.decorators.js';
@@ -83,7 +84,7 @@ export class GuidesController {
       programKey: programKey ?? null,
       discipline: discipline ?? null,
       languages: splitList(languages),
-      topics: splitList(topics) as never,
+      topics: parseTopics(topics),
       homeCountry: homeCountry ?? null,
       requiresAvailability: forSession === 'true',
     });
@@ -202,6 +203,16 @@ export class GuidesController {
   ) {
     return this.guides.suspend(toAuditActor(access), id, body.reason);
   }
+}
+
+/**
+ * Unknown topic names are dropped rather than rejected: a stale bookmark with a
+ * topic we have since renamed should still show the directory, not an error.
+ */
+function parseTopics(value: string | undefined): GuideTopic[] {
+  return splitList(value).filter((entry): entry is GuideTopic =>
+    (GUIDE_TOPICS as readonly string[]).includes(entry),
+  );
 }
 
 function splitList(value: string | undefined): string[] {

@@ -560,9 +560,14 @@ export class GuidesService {
       include: GUIDE_INCLUDE,
     });
 
+    // One query for every programme name on the roster rather than one per
+    // guide: the directory is the hot read here, and an N+1 over the catalogue
+    // would grow with the roster for no reason.
+    const programNames = await this.programNames(rows.map((row) => row.programKey));
+
     const candidates: GuideCandidate[] = await Promise.all(
       rows.map(async (row) => ({
-        profile: toPublicGuideProfile(await this.toRecord(row, now)),
+        profile: toPublicGuideProfile(this.toRecord(row, now, programNames)),
         openSlots: await this.countOpenSlots(row.id, now),
       })),
     );
@@ -580,7 +585,9 @@ export class GuidesService {
     // suspension off the API, and the student sees the suspension in the thread
     // they already have, where it comes with an explanation.
     if (row === null || !isGuideDiscoverable(row.state)) throw AppError.notFound('Guide');
-    return toPublicGuideProfile(await this.toRecord(row, new Date()));
+    return toPublicGuideProfile(
+      this.toRecord(row, new Date(), await this.programNames([row.programKey])),
+    );
   }
 
   /**
@@ -611,7 +618,7 @@ export class GuidesService {
       this.prisma.conversation.count({ where: { guideId: row.id, status: 'open' } }),
     ]);
 
-    const record = await this.toRecord(row, now);
+    const record = this.toRecord(row, now, await this.programNames([row.programKey]));
 
     return {
       profile: toPublicGuideProfile(record),
@@ -651,6 +658,19 @@ export class GuidesService {
     return guide;
   }
 
+  /** Current names for a set of programme keys, in one query. */
+  private async programNames(
+    keys: readonly (string | null)[],
+  ): Promise<ReadonlyMap<string, string>> {
+    const wanted = [...new Set(keys.filter((key): key is string => key !== null))];
+    if (wanted.length === 0) return new Map();
+    const programs = await this.prisma.program.findMany({
+      where: { programKey: { in: wanted }, effectiveTo: null },
+      select: { programKey: true, name: true },
+    });
+    return new Map(programs.map((program) => [program.programKey, program.name]));
+  }
+
   private async countOpenSlots(guideId: string, now: Date): Promise<number> {
     const slots = await this.prisma.guideAvailabilitySlot.findMany({
       where: { guideId, startsAt: { gt: now } },
@@ -664,17 +684,11 @@ export class GuidesService {
    * something to project *from*. Everything a student can reach passes the
    * result of this straight into `toPublicGuideProfile`.
    */
-  private async toRecord(row: GuideRow, now: Date): Promise<GuideRecord> {
-    const programName =
-      row.programKey === null
-        ? null
-        : ((
-            await this.prisma.program.findFirst({
-              where: { programKey: row.programKey, effectiveTo: null },
-              select: { name: true },
-            })
-          )?.name ?? null);
-
+  private toRecord(
+    row: GuideRow,
+    now: Date,
+    programNames: ReadonlyMap<string, string>,
+  ): GuideRecord {
     return {
       id: row.id,
       displayName: guideDisplayName(row.user.displayName),
@@ -684,7 +698,7 @@ export class GuidesService {
       campusId: row.campusId,
       campusName: row.campus?.name ?? null,
       programKey: row.programKey,
-      programName,
+      programName: row.programKey === null ? null : (programNames.get(row.programKey) ?? null),
       level: row.level,
       yearOfStudy: row.yearOfStudy,
       languages: row.languages,

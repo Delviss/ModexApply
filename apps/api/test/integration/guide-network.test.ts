@@ -435,6 +435,61 @@ describe('acceptance 3 — a payment demand is flagged, preserved and escalated'
   });
 });
 
+describe('attachments in a chat obey the vault rules', () => {
+  /**
+   * A chat must not be the one path by which an unscanned file reaches another
+   * person, and a version id must not be a way to reach somebody else's
+   * document. Both are checked on the send path, with the same predicate the
+   * connector boundary uses.
+   */
+  async function documentVersion(ownerId: string, scanState: 'clean' | 'quarantined') {
+    const document = await prisma.document.create({
+      data: { ownerId, type: 'transcript', displayName: 'Transcript.pdf' },
+    });
+    return prisma.documentVersion.create({
+      data: {
+        documentId: document.id,
+        version: 1,
+        objectKey: `documents/test/${document.id}`,
+        checksum: 'c'.repeat(64),
+        sizeBytes: 1_024,
+        contentType: 'application/pdf',
+        scanState,
+        scannedAt: new Date(),
+        uploadComplete: true,
+      },
+    });
+  }
+
+  it('refuses a quarantined file and somebody else’s file, and sends a clean one', async () => {
+    const institution = await partnerRunningGuides();
+    const { guideId } = await makeGuide(institution.id);
+    const student = await makeStudent();
+    const other = await makeStudent('other@example.com');
+    const studentAccess = studentActor(student.id, guideAccessConsent(guideId));
+    const opened = await harness.messaging.openConversation(studentAccess, { guideId });
+
+    const quarantined = await documentVersion(student.id, 'quarantined');
+    await expect(
+      harness.messaging.send(studentAccess, opened.conversation.id, 'Here it is', quarantined.id),
+    ).rejects.toThrow(/blocked|cannot be used/i);
+
+    const someoneElses = await documentVersion(other.id, 'clean');
+    await expect(
+      harness.messaging.send(studentAccess, opened.conversation.id, 'Here it is', someoneElses.id),
+    ).rejects.toThrow(/not found/i);
+
+    const mine = await documentVersion(student.id, 'clean');
+    const sent = await harness.messaging.send(
+      studentAccess,
+      opened.conversation.id,
+      'Here is my transcript',
+      mine.id,
+    );
+    expect(sent.message.moderationState).toBe('clean');
+  });
+});
+
 describe('acceptance 4 — no contact detail reaches a student client', () => {
   it('keeps email, phone and legal name out of the directory and the profile', async () => {
     const institution = await partnerRunningGuides();

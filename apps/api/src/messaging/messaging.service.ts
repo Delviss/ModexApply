@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import {
   MESSAGE_MAX_LENGTH,
+  connectorBlockReason,
+  isConnectorEligible,
   SAFETY_BANNER_TEXT,
   SIGNAL_CASE_TYPE,
   SYSTEM_MESSAGE_TEXT,
@@ -21,6 +23,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { AppError } from '../common/errors/app-error.js';
 import { systemActor, toAuditActor } from '../auth/audit-actor.js';
 import { assertConsent } from '../auth/access-context.js';
+import { toVersionContract } from '../documents/documents.service.js';
 import { GuidesService } from '../guides/guides.service.js';
 import { TrustService } from '../trust/trust.service.js';
 
@@ -259,6 +262,8 @@ export class MessagingService {
       ]);
     }
 
+    if (attachmentRef != null) await this.assertAttachmentIsSendable(access, attachmentRef);
+
     if (senderRole === 'guide') await this.enforceRateLimit(guide.id);
 
     const assessment = scanMessage(body, senderRole);
@@ -469,6 +474,38 @@ export class MessagingService {
             })();
 
     return { conversation, senderRole, guide: conversation.guide };
+  }
+
+  /**
+   * An attachment has to be the sender's own, and it has to have passed the
+   * scan.
+   *
+   * Both halves matter. Without the ownership check, a version id from anywhere
+   * on the platform could be pasted into a message — the vault's careful
+   * signed-URL rules undone by a chat. Without the scan check, a chat would be
+   * the one path by which an unscanned or quarantined file reaches another
+   * person, which is precisely what the vault exists to prevent.
+   *
+   * A version that is not the sender's answers "not found", never "forbidden":
+   * confirming that a document id exists is itself a disclosure.
+   */
+  private async assertAttachmentIsSendable(
+    access: AccessContext,
+    versionId: string,
+  ): Promise<void> {
+    const version = await this.prisma.documentVersion.findFirst({
+      where: { id: versionId, document: { ownerId: access.userId, deletedAt: null } },
+    });
+    if (version === null) throw AppError.notFound('Attachment');
+
+    // The same predicate the connector boundary uses, deliberately: "may this
+    // file leave the vault?" has one answer, not one per surface.
+    const contract = toVersionContract(version);
+    if (!isConnectorEligible(contract)) {
+      throw AppError.stateTransition(
+        connectorBlockReason(contract) ?? 'That file cannot be shared yet.',
+      );
+    }
   }
 
   /**
