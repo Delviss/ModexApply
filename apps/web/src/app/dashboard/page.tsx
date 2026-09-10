@@ -73,7 +73,11 @@ export default async function DashboardPage() {
               : `${blockedDocuments} still need attention`
           }
         />
-        <StatCard label="Applications" value={0} caption="Applications open in a later phase" />
+        <StatCard
+          label="Conversations"
+          value={<Link href="/messages">Your messages</Link>}
+          caption="Verified current students, never university staff"
+        />
         <StatCard label="Offers" value={0} caption="Offers arrive with Phase 5" />
       </div>
 

@@ -45,6 +45,8 @@ export default function HomePage() {
         <DisclosureNotice kind="ranking_method" />
         <p style={{ marginTop: 'var(--mx-space-4)' }}>
           <Link href="/institutions/demo">See an example institution page</Link>
+          {' · '}
+          <Link href="/questions">Read questions students actually asked</Link>
         </p>
       </div>
     </main>

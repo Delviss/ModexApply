@@ -244,6 +244,28 @@ export default async function InstitutionPage({ params }: PageProps) {
             </ul>
           </Card>
 
+          {/*
+            The entry point to the guide directory, and the only one: guides are
+            always scoped to a university, because that is the only thing they
+            can speak to.
+          */}
+          <Card padding="lg">
+            <CardHeader
+              title="Ask a student who is there"
+              description="Verified current students at this university answer questions about halls, costs, coursework and settling in. They are not staff, they never take money, and they cannot affect an admission decision."
+            />
+            <p style={{ marginTop: 'var(--mx-space-3)' }}>
+              <Link
+                className="mx-button"
+                data-variant="secondary"
+                data-size="md"
+                href={`/guides?institutionId=${institution.id}`}
+              >
+                See student guides
+              </Link>
+            </p>
+          </Card>
+
           <p style={{ fontSize: 'var(--mx-text-sm)' }}>
             <Link href={`/institutions/${institution.id}/programmes`}>
               See every published programme

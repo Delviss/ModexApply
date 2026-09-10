@@ -207,6 +207,12 @@ export class MessagingService {
     }));
 
     return {
+      /**
+       * Who is reading. Sent explicitly so a client can tell its own messages
+       * from the other side's without a second call — and without a student
+       * client needing an endpoint that hands out user ids.
+       */
+      viewerId: access.userId,
       conversation: {
         id: conversation.id,
         status: conversation.status,

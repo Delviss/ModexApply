@@ -305,10 +305,160 @@ async function main(): Promise<void> {
     data: { currentVersionId: quarantined.id },
   });
 
+
+  // ---------------------------------------------------------------------------
+  // Phase 3 — the guide network (#5)
+  // ---------------------------------------------------------------------------
+  //
+  // Three guides in three states, because the interesting surfaces are the ones
+  // that are not "everything is fine": an active guide, one whose evidence is
+  // inside the 30-day warning window, and one already restricted. The directory
+  // shows exactly one of them, which is the point.
+  async function seedGuide(input: {
+    email: string;
+    displayName: string;
+    languages: string[];
+    homeCountry: string;
+    topics: ('accommodation' | 'cost_of_living' | 'campus_life' | 'coursework' | 'part_time_work')[];
+    bio: string;
+    expiresInDays: number | null;
+    state: 'active' | 'restricted';
+  }) {
+    const user = await prisma.user.create({
+      data: {
+        email: input.email,
+        displayName: input.displayName,
+        status: 'active',
+        emailVerifiedAt: new Date(),
+        roles: { create: { role: 'guide' } },
+      },
+    });
+
+    const expiresAt =
+      input.expiresInDays === null
+        ? null
+        : new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000);
+
+    return prisma.studentGuide.create({
+      data: {
+        userId: user.id,
+        institutionId: institution.id,
+        campusId: manchester?.id ?? null,
+        programKey: dataScience.programKey,
+        level: 'postgraduate_taught',
+        yearOfStudy: 2,
+        languages: input.languages,
+        homeCountry: input.homeCountry,
+        topics: input.topics,
+        bio: input.bio,
+        state: input.state,
+        stage: 'active',
+        verifiedAt: new Date(),
+        evidenceExpiresAt: expiresAt,
+        trustScore: 72,
+        responseTimeHours: 5,
+        lastSeenAt: new Date(),
+        verifications: {
+          create: {
+            evidenceType: 'university_domain_email',
+            summary: `Challenge confirmed on an address at ${DOMAIN}.`,
+            verifiedAt: new Date(),
+            expiresAt,
+          },
+        },
+      },
+    });
+  }
+
+  const activeGuide = await seedGuide({
+    email: `amara@${DOMAIN}`,
+    displayName: 'Amara Chidinma Okonkwo',
+    languages: ['English', 'Yoruba'],
+    homeCountry: 'NG',
+    topics: ['accommodation', 'cost_of_living', 'coursework'],
+    bio: 'Second year on the MSc. I moved from Lagos in 2025 and lived in the older halls for a year, so I can tell you what they are actually like.',
+    expiresInDays: 120,
+    state: 'active',
+  });
+
+  await seedGuide({
+    email: `bilal@${DOMAIN}`,
+    displayName: 'Bilal Ahmed',
+    languages: ['English', 'Urdu'],
+    homeCountry: 'PK',
+    topics: ['part_time_work', 'campus_life'],
+    // Inside the warning window, so the dashboard countdown renders amber in
+    // development without waiting five months for it.
+    bio: 'I work in the library ten hours a week and can talk about balancing that with the course.',
+    expiresInDays: 12,
+    state: 'active',
+  });
+
+  await seedGuide({
+    email: `chen@${DOMAIN}`,
+    displayName: 'Chen Wei',
+    languages: ['English', 'Mandarin'],
+    homeCountry: 'CN',
+    topics: ['campus_life'],
+    bio: 'Third year. Ask me about societies.',
+    // Already lapsed: restricted, out of the directory, conversations intact.
+    expiresInDays: -3,
+    state: 'restricted',
+  });
+
+  // Two free slots and one already taken, so the booking calendar shows both
+  // states without anybody having to book anything first.
+  const slotStart = (days: number, hour: number) => {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + days);
+    date.setUTCHours(hour, 0, 0, 0);
+    return date;
+  };
+  for (const [days, hour, booked] of [
+    [3, 15, 0],
+    [3, 16, 1],
+    [5, 10, 0],
+  ] as const) {
+    await prisma.guideAvailabilitySlot.create({
+      data: {
+        guideId: activeGuide.id,
+        startsAt: slotStart(days, hour),
+        endsAt: new Date(slotStart(days, hour).getTime() + 30 * 60 * 1000),
+        topics: ['accommodation'],
+        capacity: 1,
+        booked,
+      },
+    });
+  }
+
+  // A published answer, which needed both a moderator's yes and the guide's.
+  const question = await prisma.guideQuestion.create({
+    data: {
+      institutionId: institution.id,
+      topic: 'accommodation',
+      body: 'How much is a room in halls, and are bills included?',
+    },
+  });
+  await prisma.guideAnswer.create({
+    data: {
+      questionId: question.id,
+      guideId: activeGuide.id,
+      body: 'I paid about £140 a week in the older halls with bills and wifi included. The newer blocks are closer to £190. Both are self-catered, and the kitchens are shared between six.',
+      state: 'published',
+      guideConsentedAt: new Date(),
+      moderatedAt: new Date(),
+      moderatedBy: 'seed',
+      publishedAt: new Date(),
+      helpfulCount: 12,
+    },
+  });
+
   console.warn(
     `Seeded: ${institution.displayName} (verified, 2 programmes), ` +
       'Northern Institute of Technology (mid-onboarding), and ' +
-      `${student.displayName} (part-complete profile, one clean and one quarantined document).`,
+      `${student.displayName} (part-complete profile, one clean and one quarantined document), ` +
+      'plus three student guides (active, expiring, restricted), three session slots and ' +
+      'one published Q&A answer.',
   );
   console.warn(
     'Run `pnpm --filter @modex/api exec tsx prisma/reindex.ts` to build the search index.',

@@ -1865,3 +1865,110 @@
   margin: 0;
   color: var(--mx-text-muted);
 }
+
+/* --------------------------------------------------------------------------
+ * Phase 3 pages
+ * ------------------------------------------------------------------------ */
+
+.mx-guides-page,
+.mx-guide-page,
+.mx-messages-page,
+.mx-qa-page,
+.mx-guide-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-6);
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--mx-space-8) var(--mx-space-6) var(--mx-space-16);
+}
+
+.mx-guides-page__topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-space-2);
+}
+
+.mx-guides-page__topics a {
+  padding: var(--mx-space-1) var(--mx-space-3);
+  border: 1px solid var(--mx-border-input);
+  border-radius: var(--mx-radius-pill);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text);
+  text-decoration: none;
+}
+
+.mx-guides-page__topics a[data-selected='true'] {
+  background: var(--mx-brand-50);
+  border-color: var(--mx-brand-600);
+  color: var(--mx-brand-700);
+}
+
+.mx-guides-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--mx-space-4);
+}
+
+.mx-guides-page__rules,
+.mx-qa-page__rules {
+  margin: var(--mx-space-3) 0 0;
+  padding-inline-start: var(--mx-space-4);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+  line-height: var(--mx-leading-body);
+}
+
+.mx-guide-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mx-space-4);
+}
+
+.mx-guide-page__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--mx-space-4);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .mx-guide-page__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mx-guide-page__main,
+.mx-guide-page__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+}
+
+.mx-guide-page__topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-space-2);
+  margin: 0 0 var(--mx-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.mx-start-conversation,
+.mx-book-session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-3);
+  margin-top: var(--mx-space-3);
+}
+
+.mx-guide-dashboard__sessions {
+  margin: var(--mx-space-3) 0 0;
+  padding-inline-start: var(--mx-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+  font-size: var(--mx-text-sm);
+}
