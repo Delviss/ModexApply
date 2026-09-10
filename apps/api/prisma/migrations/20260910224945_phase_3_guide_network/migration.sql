@@ -338,6 +338,9 @@ CREATE INDEX "messages_conversationId_sentAt_idx" ON "messages"("conversationId"
 CREATE INDEX "message_flags_messageId_idx" ON "message_flags"("messageId");
 
 -- CreateIndex
+CREATE INDEX "message_flags_trustCaseId_idx" ON "message_flags"("trustCaseId");
+
+-- CreateIndex
 CREATE INDEX "message_flags_signal_severity_idx" ON "message_flags"("signal", "severity");
 
 -- CreateIndex
@@ -399,12 +402,6 @@ ALTER TABLE "conversations" ADD CONSTRAINT "conversations_guideId_fkey" FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "message_flags" ADD CONSTRAINT "message_flags_messageId_fkey" FOREIGN KEY ("messageId") REFERENCES "messages"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "message_flags" ADD CONSTRAINT "message_flags_trustCaseId_fkey" FOREIGN KEY ("trustCaseId") REFERENCES "trust_cases"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "trust_case_events" ADD CONSTRAINT "trust_case_events_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "trust_cases"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -1223,8 +1223,7 @@ model Message {
   sentAt DateTime  @default(now())
   readAt DateTime?
 
-  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  flags        MessageFlag[]
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, sentAt])
   @@map("messages")
@@ -1253,23 +1252,28 @@ enum RiskSeverity {
 /// evidence, so the copy lives in a table the application has no update or
 /// delete path to, and the migration installs the same append-only trigger the
 /// audit log uses.
+///
+/// `messageId` and `trustCaseId` are plain columns rather than foreign keys, and
+/// that is deliberate: **evidence outlives the thing it is evidence of.** A
+/// message row removed under a data-erasure request, or a case deleted in some
+/// future cleanup, must not be able to take the record of a payment demand with
+/// it — and a foreign key would do exactly that, since a cascade or a restrict
+/// both make the evidence a hostage of the row it describes.
 model MessageFlag {
-  id           String       @id @default(uuid())
-  messageId    String
-  signal       RiskSignal
-  severity     RiskSeverity
+  id        String       @id @default(uuid())
+  messageId String
+  signal    RiskSignal
+  severity  RiskSeverity
   /// The exact substrings that matched. Short, and quoted from the message.
   matches      String[]
   bodySnapshot String
   /// SHA-256 of the snapshot, so tampering at the storage layer is detectable.
-  bodyHash     String
-  trustCaseId  String?
-  createdAt    DateTime     @default(now())
-
-  message   Message    @relation(fields: [messageId], references: [id], onDelete: Restrict)
-  trustCase TrustCase? @relation(fields: [trustCaseId], references: [id], onDelete: SetNull)
+  bodyHash    String
+  trustCaseId String?
+  createdAt   DateTime @default(now())
 
   @@index([messageId])
+  @@index([trustCaseId])
   @@index([signal, severity])
   @@map("message_flags")
 }
@@ -1327,7 +1331,6 @@ model TrustCase {
   closedAt DateTime?
 
   events TrustCaseEvent[]
-  flags  MessageFlag[]
 
   @@index([state, severity])
   @@index([targetType, targetId])

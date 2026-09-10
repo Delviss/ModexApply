@@ -15,6 +15,12 @@ import { SearchService } from '../../src/search/search.service.js';
 import { IndexerService } from '../../src/search/indexer.service.js';
 import { PostgresSearchIndex } from '../../src/search/postgres-search-index.js';
 import { StorageService } from '../../src/storage/storage.service.js';
+import { GuidesService } from '../../src/guides/guides.service.js';
+import { ReverificationService } from '../../src/guides/reverification.service.js';
+import { MessagingService } from '../../src/messaging/messaging.service.js';
+import { TrustService } from '../../src/trust/trust.service.js';
+import { SessionsService } from '../../src/sessions/sessions.service.js';
+import { QaService } from '../../src/qa/qa.service.js';
 import type { MalwareScanner, ScanVerdict } from '../../src/documents/scanner.port.js';
 import type { AccessContext, Role } from '@modex/contracts';
 
@@ -107,6 +113,12 @@ export interface Harness {
   index: PostgresSearchIndex;
   storage: FakeStorage;
   scanner: ScriptedScanner;
+  guides: GuidesService;
+  reverification: ReverificationService;
+  messaging: MessagingService;
+  trust: TrustService;
+  sessions: SessionsService;
+  qa: QaService;
 }
 
 /**
@@ -164,6 +176,12 @@ export function createHarness(prisma: PrismaClient): Harness {
   const storage = new FakeStorage();
   const scanner = new ScriptedScanner();
   const index = new PostgresSearchIndex(prismaService);
+  // Phase 3. Hand-wired like everything else here, so each test's dependency
+  // graph is visible in the test rather than in a container configuration.
+  const guides = new GuidesService(prismaService, audit, queue as unknown as QueueService);
+  const trust = new TrustService(prismaService, audit);
+  const messaging = new MessagingService(prismaService, audit, guides, trust);
+  const sessions = new SessionsService(prismaService, audit, guides, trust);
   return {
     prisma,
     audit,
@@ -193,19 +211,36 @@ export function createHarness(prisma: PrismaClient): Harness {
     index,
     storage,
     scanner,
+    guides,
+    trust,
+    messaging,
+    sessions,
+    qa: new QaService(prismaService, audit, guides),
+    reverification: new ReverificationService(
+      prismaService,
+      audit,
+      guides,
+      queue as unknown as QueueService,
+    ),
   };
 }
 
 /**
  * Clears state between tests.
  *
- * `audit_events` is deliberately absent: it cannot be truncated, which is the
- * property under test. Tests therefore assert on the events they caused rather
- * than on the table being empty.
+ * `audit_events` and `message_flags` are deliberately absent: neither can be
+ * truncated, which is the property under test. Tests therefore assert on the
+ * rows they caused rather than on the table being empty. `message_flags` holds
+ * no foreign key to `messages`, so truncating messages does not drag it in —
+ * which is the same design decision, seen from the other side.
  */
 export async function resetDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
+      guide_answers, guide_questions, guide_reward_entries, guide_sessions,
+      guide_availability_slots, trust_case_events, trust_cases,
+      messages, conversations,
+      guide_identity_changes, guide_verifications, student_guides,
       shortlist_items, shortlists, saved_searches,
       document_versions, documents,
       language_tests, academic_records, student_profiles,
@@ -223,6 +258,36 @@ export async function resetDatabase(prisma: PrismaClient): Promise<void> {
 
 export function actor(roles: Role[], organisationId: string | null = null, userId = 'user_test'): AccessContext {
   return buildAccessContext({ userId, roles, organisationId, mfaSatisfied: true, consents: [] });
+}
+
+/** A signed-in student, with the consents a Phase 3 flow needs. */
+export function studentActor(
+  userId: string,
+  consents: AccessContext['consents'] = [],
+): AccessContext {
+  return buildAccessContext({
+    userId,
+    roles: ['student'],
+    organisationId: null,
+    mfaSatisfied: false,
+    consents,
+  });
+}
+
+/** A guide, in the RBAC sense. Whether they may *send* is a separate question. */
+export const guideActor = (userId: string) => actor(['guide'], null, userId);
+
+/** `guide_access` for one guide, which is what opening a conversation needs. */
+export function guideAccessConsent(guideId: string): AccessContext['consents'] {
+  return [
+    {
+      scope: 'guide_access',
+      grantedAt: new Date(Date.now() - 1_000).toISOString(),
+      expiresAt: null,
+      revokedAt: null,
+      subjectId: guideId,
+    },
+  ];
 }
 
 /** Modex trust agent: can verify, crosses organisation boundaries. */
