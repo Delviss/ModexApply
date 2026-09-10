@@ -10,7 +10,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'docs/site/**'
+      - 'docs/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -40,11 +40,16 @@ jobs:
 
       # No build step on purpose. The page is hand-written HTML with its assets
       # beside it, so what is reviewed in the diff is exactly what is served.
+      #
+      # It lives at docs/ root rather than a subfolder so the repository also
+      # works under the other Pages source: "Deploy from a branch" only offers
+      # root or /docs, never a nested path, so a site under docs/site/ simply
+      # cannot be served that way. Either setting works now.
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/site
+          path: docs
 
       - id: deploy
         uses: actions/deploy-pages@v4
