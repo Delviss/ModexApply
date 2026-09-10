@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/button.js';
 import { Input } from '../primitives/field.js';
 import { ArrowUpDownIcon, ChevronDownIcon, ChevronUpIcon, SearchIcon } from '../primitives/icons.js';
@@ -61,6 +61,11 @@ export function DataTable<Row>({
   footer,
   className,
 }: DataTableProps<Row>) {
+  // `useId` rather than a constant: two of these on one page -- which compare
+  // and the dashboard both do -- would otherwise emit duplicate DOM ids and
+  // break every label association on the second one.
+  const controlId = useId();
+
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ columnId: string; direction: 'asc' | 'desc' } | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -122,13 +127,13 @@ export function DataTable<Row>({
   return (
     <div className={cn('mx-table-wrap', className)}>
       <div className="mx-table-toolbar">
-        <label className="mx-visually-hidden" htmlFor="mx-table-search">
+        <label className="mx-visually-hidden" htmlFor={controlId}>
           {searchPlaceholder}
         </label>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flex: '0 1 280px' }}>
           <SearchIcon size={16} />
           <Input
-            id="mx-table-search"
+            id={controlId}
             type="search"
             placeholder={searchPlaceholder}
             value={query}

@@ -1,7 +1,8 @@
-# Phase 0 and Phase 1 — what is built, and what is not
+# Phases 0–2 — what is built, and what is not
 
-Tracks issues [#2](https://github.com/Delviss/ModexApply/issues/2) and
-[#3](https://github.com/Delviss/ModexApply/issues/3).
+Tracks issues [#2](https://github.com/Delviss/ModexApply/issues/2),
+[#3](https://github.com/Delviss/ModexApply/issues/3) and
+[#4](https://github.com/Delviss/ModexApply/issues/4).
 
 ---
 
@@ -135,12 +136,146 @@ Worth recording, because none of them would have failed a test:
 
 ---
 
+---
+
+# Phase 2 — student experience
+
+Tracks issue [#4](https://github.com/Delviss/ModexApply/issues/4), FR-001 – FR-006.
+
+## Acceptance criteria
+
+| Criterion | State |
+|---|---|
+| Register, complete a profile, upload a document, search, filter, shortlist and compare without a reload breaking state | **Partial** — everything but shortlist is built and verified against a running stack; the shortlist tables exist and are unused, see *Gaps* |
+| Eligibility returns a structured explanation with a source for every rule; a boolean-only response fails contract tests | **Done** — the engine returns `EligibilityExplanation` and nothing else; 28 unit tests plus integration coverage against real requirements |
+| An ineligible programme still appears in results, labelled with its specific failing rule | **Partial, by decision** — ineligible programmes are never filtered out, which is the load-bearing half; the *labelling* is on the detail and compare pages rather than the result card. See *Deviations* |
+| A malware-positive upload is quarantined, the student is told, and the file is provably unreachable from any application payload | **Done** — `isConnectorEligible` is enforced in `resolveForConnector`, the method the Phase 4 connector calls, and tested there rather than at the UI |
+| Uploading a new version leaves prior versions intact and retrievable | **Done** — there is no update path to a version's object key; tested by reading version 1 back after version 2 lands |
+| p95 search latency < 500 ms under the MVP load profile, with the test in CI | **Done** — its own CI job over a 2,000-programme catalogue. Browse 105 ms, free text 49 ms, faceted 13 ms, sorted 124 ms, zero-result 17 ms |
+| Zero-result searches always render an explanation plus at least one relaxable filter suggestion | **Done** — `diagnoseNoResults` computes counts per dropped filter, so the suggestion names the filter actually doing the excluding |
+| A signed document URL expires and cannot be replayed; an IDOR attempt is rejected and audited | **Done** — TTL capped at 900 s by `StorageService`; the IDOR attempt returns 404 without confirming existence and writes an audit event with `refused: true` |
+| All journeys pass WCAG 2.2 AA and are keyboard operable in both themes | **Partial** — same gap as Phases 0–1: the contrast budget and keyboard behaviour are enforced and tested, but there is still no automated axe run over rendered pages |
+
+## Deviations from the issue, and why
+
+**1. The eligibility chip is not on the result card.** Acceptance criterion 3
+asks for an ineligible programme to appear "labelled with its specific failing
+rule". Half of that is done and is the half that matters: eligibility never
+filters or hides a result. The label itself lives on the programme page and the
+compare view, by an explicit product decision taken before implementation.
+
+The reasoning is worth recording because it cuts both ways. A chip has room for
+a verdict but not for the rule, the source and the remedy — and a verdict
+without those is exactly the uncontestable judgement
+`<EligibilityExplanation>` exists to prevent. Against that: a student scanning
+thirty results does not open thirty pages, so a fail they cannot see on the card
+is a fail they will not learn about until later. **This is worth revisiting**,
+probably as a compact variant that shows the failing rule's summary rather than
+a bare status.
+
+**2. OpenSearch is a port, not a running adapter.** The TRD names OpenSearch.
+What ships is `SearchIndex` with a PostgreSQL adapter behind it, and the reason
+is the fifteen-minute cold start: adding a JVM cluster to `docker-compose.yml`
+and to CI buys nothing at this catalogue size, where trigram search answers a
+faceted query in 13 ms. The seam is the deliverable — an OpenSearch adapter
+implements the same three methods and has to pass the same tests.
+
+The honest limit: the Postgres adapter fetches the matching set and ranks it in
+process, because ranking depends on the student's profile and the index does not
+hold profiles. At 2,000 programmes that costs ~105 ms; at 50,000 it would breach
+the budget. The latency job is what will say so, and the OpenSearch adapter is
+the answer when it does.
+
+**3. 21st.dev blocks are rebuilt, not installed** — as in Phases 0–1, for a new
+reason. The MCP is connected now, but the account is free-tier (two component
+retrievals a day against fifteen named in the issue), and the code that comes
+back is Tailwind + Radix + lucide + `class-variance-authority`. `apps/web` has
+no Tailwind, `packages/ui` has no Radix, and `check:vendor-hex` fails the build
+on Tailwind colour classes. Installing them properly is an architectural change,
+not a re-theme. `registry.ts` records the paths so a later install is a diff.
+
+**4. The third-party scanner in the issue comments is not wired in.** The
+[comment](https://github.com/Delviss/ModexApply/issues/4#issuecomment-5608491308)
+is from a non-collaborator and carries a campaign-tagged tracking link. Its
+advice — fail-closed state machine, enforced at the connector boundary — is the
+issue's own requirement and is what `MalwareScanner` implements. Its vendor is
+not.
+
+## Gaps, and why
+
+**Shortlist and saved search.** `Shortlist`, `ShortlistItem` and `SavedSearch`
+are in the schema with no service or UI behind them. Compare works from URL
+parameters, which is enough to compare programmes but not to keep a list
+between sessions. Left deliberately rather than half-built: a shortlist is
+cheap once there is a dashboard to hang it on, and guessing at the interaction
+now would be guessing.
+
+**Retention is configured, not enforced.** `DOCUMENT_RETENTION_DAYS` is
+validated and read, and documents soft-delete so an application snapshot can
+still resolve the version it references. The sweeper that actually removes
+objects past their retention window is not built.
+
+**No scheduler.** `FreshnessService.sweep` and the document-expiry reminders
+both need to run on a schedule. The queues and the workers exist; nothing
+triggers them periodically, so both are manual today. This was already true in
+Phase 1 and Phase 2 adds a second consumer of it.
+
+**Grade conversion is a small table.** Five published mappings, each with a
+source. Anything outside them returns `unknown` rather than an interpolation —
+which is the right failure, but it does mean a student with, say, an Indian
+percentage-on-a-different-base gets "we cannot judge this" instead of an answer.
+Adding tables is cheap; inventing conversions is not acceptable.
+
+## Bugs found while testing
+
+**Search fetched and ranked everything twice.** `SearchService` called
+`fetchDocuments` and then `index.query()`, which fetched the same set again
+internally — two full reads and two rankings on every search on the site.
+Sorted-browse p95 went from 271 ms to 124 ms once it was one of each.
+
+**A document requirement demanded a profile it does not read.** The engine
+short-circuited every rule when the profile was absent, so a student who had
+uploaded a transcript but not filled in their nationality was told "we need your
+profile" about the transcript. `document_required` reads the vault, and
+`portfolio` and `interview` are the university's judgement either way; all three
+are now answered without one.
+
+**The `Sheet` focus trap would have found nothing.** The usual
+`offsetParent !== null` visibility filter reports null for anything inside a
+`position: fixed` ancestor — which is what a modal sheet is. The trap would have
+silently done nothing in a real browser, not just in jsdom.
+
+**A facet count in a control's accessible name.** `Checkbox` rendered its `meta`
+slot inside the `<label>`, so a screen reader announced "Scholarship available
+12" — and announced something different every time a filter moved. The count is
+now a sibling of the label.
+
+**The consent guard read the wrong parameter.** `ConsentGuard` resolved the
+consent subject from `params.id` only. A route addressed as `:documentId`
+therefore passed `null` and degraded to a scope check — "this student consented
+to share something with somebody" — which is not the question being asked.
+`RequireConsentOn` names the parameter.
+
+**The test harness pointed at a database nothing starts.** `testDatabaseUrl()`
+fell back to port 5433 with no password; `docker-compose.yml` publishes 5432
+with `modex:modex`. And `RecordingQueue` was never cleared between tests while
+the database was, so any assertion counting enqueued jobs passed in isolation
+and failed in suite order.
+
+---
+
 ## What the next phases need from this one
 
-- **Phase 2 (#4)** — catalogue search and the eligibility engine. The
-  `EligibilityExplanation` contract and component are built and tested; the
-  engine that produces one is not.
 - **Phase 3 (#5)** — guide network. The messaging and scheduling blocks are
-  deferred here, and the consent model (`guide_access`) is already in place.
+  deferred, and the consent model (`guide_access`) is in place. `Sheet` now
+  provides the modal behaviour chat and scheduling will both need.
 - **Phase 4 (#6)** — applications and connectors. Idempotency keys, the audit
-  spine, effective-dated snapshots and the adapter boundary are all built for it.
+  spine, effective-dated snapshots and the adapter boundary are all built.
+  **`DocumentsService.resolveForConnector` is the method to call** for any
+  document going into a payload: it is where "unscanned never leaves" is
+  enforced, and bypassing it would bypass the guarantee.
+- **Phase 5 (#7)** — offers. `ProgramSearchDocument` carries
+  `scholarshipAvailable` and `discountAvailable` as facets already; they are
+  wired to `false` until there is something to populate them from.
+- **Phase 6 (#8)** — admin portals. `EligibilityOverride` is read and audited by
+  the engine; the tooling that writes one is Phase 6's.

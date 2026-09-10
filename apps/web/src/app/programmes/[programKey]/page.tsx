@@ -20,6 +20,14 @@ import {
   toProvenance,
   type PublicProgramme,
 } from '@/lib/api';
+import {
+  INTAKE_LABELS,
+  INTAKE_TONES,
+  LEVEL_LABELS,
+  MODE_LABELS,
+  RULE_LABELS,
+} from '@/lib/labels';
+import { EligibilityPanel } from '@/components/eligibility-panel';
 import { programmeClaim } from '@/lib/verification';
 
 /**
@@ -297,6 +305,14 @@ export default async function ProgrammePage({ params }: PageProps) {
         </article>
 
         <aside style={{ position: 'sticky', top: 'var(--mx-space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--mx-space-4)' }}>
+          {/*
+            The eligibility explanation lives here rather than as a chip on a
+            search result card: it needs room to show every rule with its
+            source, which is what makes a verdict something a student can argue
+            with rather than just receive.
+          */}
+          <EligibilityPanel programKey={programKey} />
+
           <Card padding="lg" elevation={2}>
             <CardHeader title="Cost and deadline" />
             {fees === undefined ? (
@@ -403,53 +419,3 @@ function FeeRow({ label, value, emphasis = false }: { label: string; value: stri
     </div>
   );
 }
-
-const LEVEL_LABELS: Record<string, string> = {
-  foundation: 'Foundation',
-  undergraduate: 'Undergraduate',
-  postgraduate_taught: 'Postgraduate (taught)',
-  postgraduate_research: 'Postgraduate (research)',
-  doctorate: 'Doctorate',
-  pathway: 'Pathway',
-  short_course: 'Short course',
-};
-
-const MODE_LABELS: Record<string, string> = {
-  full_time: 'Full time',
-  part_time: 'Part time',
-  distance: 'Distance',
-  hybrid: 'Hybrid',
-};
-
-const RULE_LABELS: Record<string, string> = {
-  academic_qualification: 'Academic qualification',
-  gpa_minimum: 'Minimum grade',
-  english_language: 'English language',
-  work_experience: 'Work experience',
-  portfolio: 'Portfolio',
-  interview: 'Interview',
-  age_minimum: 'Minimum age',
-  nationality_restriction: 'Nationality restriction',
-  document_required: 'Required document',
-};
-
-const INTAKE_LABELS: Record<string, string> = {
-  scheduled: 'Scheduled',
-  open: 'Open',
-  closing_soon: 'Closing soon',
-  closed: 'Closed',
-  cancelled: 'Cancelled',
-};
-
-/**
- * `closing_soon` is a warning, not a brand moment. Brand crimson is reserved
- * for the apply action, and using it to create urgency would be exactly the
- * discount-coupon register this platform avoids.
- */
-const INTAKE_TONES: Record<string, 'success' | 'warning' | 'neutral' | 'danger'> = {
-  scheduled: 'neutral',
-  open: 'success',
-  closing_soon: 'warning',
-  closed: 'neutral',
-  cancelled: 'danger',
-};

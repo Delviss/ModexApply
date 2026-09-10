@@ -99,6 +99,22 @@ export class StorageService {
           : {},
     };
   }
+
+  /**
+   * Reads an object back into memory.
+   *
+   * The one place the API handles document bytes itself, and it exists for one
+   * reason: the malware scanner has to see them. Everything else in the vault
+   * uses signed URLs so that transcripts and passports never enter this
+   * process. Returns `null` when the object is absent, which the caller must
+   * treat as "cannot scan" rather than "nothing to scan".
+   */
+  async fetchObject(key: string): Promise<Buffer | null> {
+    const signed = this.signUrl('GET', key, { ttlSeconds: 60 });
+    const response = await fetch(signed.url);
+    if (!response.ok) return null;
+    return Buffer.from(await response.arrayBuffer());
+  }
 }
 
 function deriveSignature(

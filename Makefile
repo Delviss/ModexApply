@@ -26,8 +26,9 @@ migrate: ## Apply database migrations
 	pnpm --filter @modex/api prisma:migrate
 
 .PHONY: seed
-seed: ## Load development fixtures
+seed: ## Load development fixtures and build the search index
 	pnpm --filter @modex/api seed
+	pnpm --filter @modex/api reindex
 
 .PHONY: dev
 dev: install services ## Clean clone to a running stack

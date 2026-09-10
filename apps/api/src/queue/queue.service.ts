@@ -20,6 +20,8 @@ export const QUEUES = {
   freshnessSweep: 'freshness-sweep',
   domainVerification: 'domain-verification',
   partnershipCascade: 'partnership-cascade',
+  searchIndex: 'search-index',
+  documentScan: 'document-scan',
   notifications: 'notifications',
 } as const;
 

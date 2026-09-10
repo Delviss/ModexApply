@@ -44,7 +44,14 @@ export const AUDIT_ACTIONS = [
   'catalogue.sync_failed',
   'catalogue.marked_stale',
   'document.uploaded',
+  'document.version_created',
+  'document.scan_completed',
+  'document.quarantined',
   'document.download_url_issued',
+  'document.deleted',
+  'profile.created',
+  'profile.updated',
+  'eligibility.override_applied',
   'application.submitted',
 ] as const;
 

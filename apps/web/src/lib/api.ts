@@ -81,6 +81,86 @@ export async function apiGet<T>(
   return (await response.json()) as T;
 }
 
+/**
+ * ---------------------------------------------------------------------------
+ * Authenticated requests
+ * ---------------------------------------------------------------------------
+ *
+ * **The most dangerous line in this file is a missing one.** `apiGet` above
+ * always sets `next: { revalidate }`, which is correct for the public catalogue
+ * and catastrophic for anything owner-scoped: Next's data cache is keyed on the
+ * URL, not on the session, so one student's profile response would be served to
+ * the next student who asked for `/v1/me/profile`.
+ *
+ * So the authenticated helpers below are separate functions rather than an
+ * option on the existing one, and every path through them sets
+ * `cache: 'no-store'` with no way to override it. There is no parameter to
+ * forget.
+ */
+
+/** Never cached, and there is deliberately no argument that could change that. */
+const NEVER_CACHED = { cache: 'no-store' } as const satisfies Pick<RequestInit, 'cache'>;
+
+function authHeaders(token: string, correlationId?: string): Record<string, string> {
+  return {
+    accept: 'application/json',
+    authorization: `Bearer ${token}`,
+    ...(correlationId === undefined ? {} : { 'x-correlation-id': correlationId }),
+  };
+}
+
+async function toApiError(response: Response): Promise<ApiError> {
+  const body = (await response.json().catch(() => null)) as
+    | { error?: { code?: string; message?: string; details?: Record<string, unknown> } }
+    | null;
+  return new ApiError(
+    response.status,
+    body?.error?.code ?? 'internal_error',
+    body?.error?.message ?? 'The request failed.',
+    body?.error?.details,
+  );
+}
+
+/** A read on behalf of a signed-in student. Never cached. */
+export async function apiGetAs<T>(
+  path: string,
+  token: string,
+  options: { correlationId?: string } = {},
+): Promise<T> {
+  const response = await fetch(`${apiOrigin()}/v1${path}`, {
+    headers: authHeaders(token, options.correlationId),
+    ...NEVER_CACHED,
+  });
+  if (!response.ok) throw await toApiError(response);
+  return (await response.json()) as T;
+}
+
+/** A write on behalf of a signed-in student. Never cached. */
+export async function apiSend<T>(
+  method: 'POST' | 'PATCH' | 'PUT' | 'DELETE',
+  path: string,
+  token: string,
+  body?: unknown,
+  options: { correlationId?: string; idempotencyKey?: string } = {},
+): Promise<T> {
+  const response = await fetch(`${apiOrigin()}/v1${path}`, {
+    method,
+    headers: {
+      ...authHeaders(token, options.correlationId),
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      ...(options.idempotencyKey === undefined
+        ? {}
+        : { 'idempotency-key': options.idempotencyKey }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    ...NEVER_CACHED,
+  });
+
+  if (!response.ok) throw await toApiError(response);
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
 /** Shapes the public pages consume. Mirrors the API projections. */
 export interface PublicInstitution {
   id: string;

@@ -24,6 +24,32 @@ const EnvSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.string().default('modex-local-secret'),
   SIGNED_URL_TTL_SECONDS: z.coerce.number().int().max(900).default(300),
 
+  /**
+   * Malware scanning (Phase 2 §2).
+   *
+   * The default is `none`, which is the **fail-closed** setting: no scanner
+   * means every document stays `pending` and nothing reaches a university
+   * connector. An environment that wants documents to flow has to say which
+   * scanner it trusts.
+   */
+  MALWARE_SCANNER: z.enum(['none', 'clamav']).default('none'),
+  CLAMAV_HOST: z.string().default('localhost'),
+  CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+
+  /**
+   * Per-country document retention, as `GB:2555,NG:1825`, with `default:` for
+   * everything else. Launch-market data rules differ and are still an open
+   * decision (issue #1 §7), so this is configuration rather than a constant.
+   */
+  DOCUMENT_RETENTION_DAYS: z.string().default('default:2555'),
+
+  /**
+   * Which `SearchIndex` adapter to use. `postgres` today; `opensearch` when the
+   * adapter lands against the same contract tests.
+   */
+  SEARCH_INDEX_DRIVER: z.enum(['postgres', 'opensearch']).default('postgres'),
+  OPENSEARCH_URL: z.string().optional(),
+
   /** Public origin, used in domain-confirmation copy and CORS. */
   PUBLIC_WEB_ORIGIN: z.string().default('http://localhost:3000'),
 

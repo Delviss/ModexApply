@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { FRESHNESS_SLA_HOURS, isStale, severityForField } from '@modex/contracts';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { QUEUES, QueueService } from '../queue/queue.service.js';
 import { systemActor } from '../auth/audit-actor.js';
 import { metrics } from '../common/observability/telemetry.js';
 
@@ -31,6 +32,7 @@ export class FreshnessService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly queue: QueueService,
   ) {}
 
   async sweep(now: Date = new Date()): Promise<SweepResult> {
@@ -118,6 +120,11 @@ export class FreshnessService {
         },
       });
 
+      // The sweep is one of two places a programme's visibility changes with no
+      // user request behind it. Missing it here is how a programme pulled for a
+      // stale price stays in search results still carrying that price.
+      await this.queue.enqueue(QUEUES.searchIndex, 'reindex', { programKey: program.programKey });
+
       result.programsMarked += 1;
       if (feesStale) result.feesMarked += 1;
       if (intakesStale) result.intakesMarked += 1;
@@ -157,7 +164,7 @@ export class FreshnessService {
 
   /** Clears staleness for a record the university has just re-confirmed. */
   async markConfirmed(programId: string, sourceUpdatedAt: Date, reviewedBy: string | null) {
-    return this.prisma.program.update({
+    const program = await this.prisma.program.update({
       where: { id: programId },
       data: {
         sourceUpdatedAt,
@@ -167,5 +174,10 @@ export class FreshnessService {
         reviewedBy,
       },
     });
+
+    // The other half: confirmation puts a programme back on the public site,
+    // and search has to learn about that too.
+    await this.queue.enqueue(QUEUES.searchIndex, 'reindex', { programKey: program.programKey });
+    return program;
   }
 }
