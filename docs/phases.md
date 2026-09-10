@@ -279,3 +279,122 @@ and failed in suite order.
   wired to `false` until there is something to populate them from.
 - **Phase 6 (#8)** — admin portals. `EligibilityOverride` is read and audited by
   the engine; the tooling that writes one is Phase 6's.
+
+---
+
+---
+
+# Phase 3 — the Verified Student Guide network
+
+Tracks issue [#5](https://github.com/Delviss/ModexApply/issues/5), FR-007,
+FR-008, FR-015 and FR-016.
+
+One rule governs the phase, and it is enforced in the data model, the reward
+model and the messaging pipeline rather than in a terms-of-service page:
+
+> A student guide can help a future student understand a university. They
+> **cannot** demand tuition, promise admission, guarantee a visa, or claim to
+> control the university's decision.
+
+## Acceptance criteria
+
+| Criterion | State |
+|---|---|
+| A guide cannot send a message while `verification_state` is anything other than active — enforced server-side and covered by a test | **Done** — `canGuideSendMessages` names the one passing state, `MessagingService.send` calls it before reading the body, and the integration test walks every other state |
+| Verification expiry triggers notify → restrict → suspend automatically, with no human step, proven by a time-travel test | **Done** — `guideLifecycleDecision` is pure with `now` injected; the test moves a clock across all three thresholds and asserts every resulting audit event carries `actorType: system` |
+| A message containing a payment solicitation pattern is flagged, evidence is preserved immutably, a trust case opens, and the student sees a warning — verified end to end | **Done** — one transaction writes message, evidence and case; the test then runs `UPDATE` and `DELETE` against `message_flags` and asserts the append-only trigger refuses both. Also verified by hand against a running stack |
+| A guide's phone number, email and off-platform handles are not retrievable through any API response consumed by a student client | **Done** — `toPublicGuideProfile` is an explicit field list into a `.strict()` schema; tested by stuffing a record with contact details and asserting on the serialised payload, and confirmed against the rendered directory HTML |
+| `reward_state` cannot be influenced by application outcome; an attempt to link them fails a test | **Done** — `rewardStateForSession` throws `RewardLinkageError` on any of `FORBIDDEN_REWARD_INPUTS`, in production as well as in CI. There is also no column on `guide_sessions` or `guide_reward_entries` naming an application to join against |
+| Any user can report any guide, message, offer or institutional claim, and the report creates an auditable `TrustCase` | **Done** — `POST /v1/reports` is held by every role that holds a permission at all, guides included |
+| Directory results are ordered by the documented weighted rule set, and the "match reason" reflects the actual factors used | **Done** — `matchGuides` returns the full `MatchFactor[]` with the result, and the reason line is built only from factors that scored |
+| A suspended guide disappears from the directory and their open conversations show a clear system message | **Done** — one transaction: state, conversations, system messages, cancelled sessions, released slots |
+| Chat is fully keyboard operable, messages are announced in a live region, and all surfaces pass WCAG 2.2 AA in both themes | **Partial** — the live region, the day dividers, Enter/Shift+Enter, a real submit button and the reduced-motion gate are built and tested; the contrast budget covers the five new pairings. Same gap as every phase so far: no automated axe run over rendered pages |
+
+## Decisions worth recording
+
+**Detection is scoped by who is speaking.** "How do I pay the deposit?" from a
+student is a question; "send the deposit to my account" from a guide is the
+thing this phase exists to catch. The same words carry different risk depending
+on the direction they travel, so `scanMessage` takes the sender's role and each
+rule declares which roles it applies to. Without that, the engine either misses
+the guide or buries the trust queue in students asking ordinary questions — and
+a warning that fires on ordinary questions trains everyone to ignore it.
+
+**Nothing is deleted.** A flag never edits the message body, and the student
+sees what was said with an explanation above it. Deleting would be easier and
+worse: a student who sees "a message was removed" learns nothing, cannot judge
+whether we were right, and will not recognise the next attempt somewhere we are
+not watching. It is also the only version that survives being wrong — a false
+positive over an innocent sentence reads as a false positive rather than as an
+invisible act of censorship.
+
+**Evidence outlives what it is evidence of.** `message_flags` holds no foreign
+key to `messages` or `trust_cases`. A message row removed under a data-erasure
+request, or a case deleted in some future cleanup, must not take the record of
+a payment demand with it, and a foreign key — cascade or restrict — makes the
+evidence a hostage of the row it describes. It also means the append-only
+trigger cannot be routed around by truncating the table that references it.
+
+**Restriction and suspension are different states.** Restriction is the
+automatic consequence of lapsed evidence and is undone the moment a guide
+reverifies; suspension is the consequence of ignoring restriction, or of a trust
+decision, and needs a human to undo. Collapsing them would mean either that a
+guide who is a day late loses their conversations, or that a guide who never
+reverifies keeps them forever. A restricted guide's conversations stay open and
+readable; a suspended guide's are closed with a system message saying so.
+
+**Only `critical` suspends without a human.** A payment demand or an
+impersonated admissions officer. Everything below waits for triage, because
+suspending a real student over a regex is its own kind of harm.
+
+**Publication needs two independent yeses.** A moderator's and the guide's own,
+and neither can be inferred from the other. Withdrawing consent unpublishes
+without asking a moderator; suspending a guide takes their published answers
+off the public site on the next read, with no cleanup job.
+
+## Deviations from the issue, and why
+
+**1. Messaging is polled, not pushed.** The issue names a WebSocket gateway.
+What ships is the same API surface behind a ten-second poll. The reason is the
+same one that made OpenSearch a port in Phase 2: a gateway means a second
+process, sticky sessions, a reconnect protocol and its own auth path, and none
+of that changes a single guarantee in this phase — a message is authorised,
+scanned, stored and flagged identically either way. The honest cost is up to ten
+seconds of latency and a poll per open tab. The upgrade is a transport change
+against an unchanged API, not a rewrite.
+
+**2. The guide directory is signed-in only.** The issue does not say either way.
+The catalogue is public because a programme is a published fact; a guide is a
+person, and a directory of identifiable current students, indexed, is not
+something to ship because it happened to be easier. Guide pages are `noindex`.
+The public Q&A *is* public, because a moderated, attributed answer is exactly
+what somebody should be able to read before deciding whether to sign up.
+
+**3. Availability is a flat list of slots, not a recurring calendar.** A guide
+adds the times they are free; there is no "every Tuesday" rule and no repeating
+editor. `@originui/calendar` stays deferred in `registry.ts` for that reason —
+native datetime inputs are keyboard- and screen-reader-correct everywhere
+without a dependency, and a recurrence editor is a real piece of design work
+rather than a component swap.
+
+**4. Rewards are recorded, not paid.** `GuideRewardEntry` carries the state
+machine and the ledger; the approval and payout surface is the finance console
+in [#8](https://github.com/Delviss/ModexApply/issues/8). The stipend rate lives
+in `SessionsService` as a constant until finance owns it.
+
+**5. Identity drift notifies rather than auto-restricts.** Three institution or
+programme changes inside 180 days writes `guide.identity_drift_detected` and
+enqueues a review. Each individual change already drops the guide back to
+`pending` — their evidence was for the *old* university — so the drift signal is
+about a pattern across changes, which is a human judgement.
+
+## What Phase 4 and Phase 6 get from this
+
+- **Phase 4 (#6)** — applications. `Conversation.contextType` already carries
+  `application`, so a thread can be scoped to one without a migration. Nothing
+  in the guide network can read an application, and that should stay true.
+- **Phase 6 (#8)** — the Trust console. `TrustService.list`, `detail` and
+  `transition` are the read and write model it needs; `detail` returns the
+  preserved evidence alongside the case. The finance surface reads
+  `guide_reward_entries`, whose state machine ends at `paid` and has no path
+  back — a reversal is a new entry, not an edit.

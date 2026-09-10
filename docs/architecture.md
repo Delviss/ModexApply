@@ -150,9 +150,38 @@ Scanning is a port. The default with nothing configured is `NoScanner`, which
 reports `pending` forever: an unconfigured deployment holds every document
 rather than sending unscanned ones.
 
+## The guide network
+
+Three properties, each enforced where it cannot be forgotten.
+
+**A guide is a link to current-student evidence.** `institutionId` is not
+nullable, activation reads the verified evidence back from the database rather
+than trusting a request body, and the evidence's expiry is mirrored onto the
+guide so one indexed scan finds everyone the clock is about to act on. Changing
+which university you study at is not a profile edit: it is recorded as an
+identity change and drops the guide to `pending`, because the evidence proved
+something about somewhere else.
+
+**Expiry acts on its own.** `guideLifecycleDecision` is a pure function with
+`now` injected; `ReverificationService` carries out its verdict and does nothing
+else. Notify at 30 days, restrict at expiry, suspend 14 days later. No human
+step, and the audit events prove it: every one carries `actorType: system`.
+
+**The scan runs on the send path, and evidence is written before any action.**
+`MessagingService.send` authorises, rate-limits, scans, then writes the message,
+the flags and the trust case in one transaction — and only then, after the
+commit, suspends. `message_flags` is append-only at the database (the same
+trigger pattern as `audit_events`) and holds no foreign key to `messages` or
+`trust_cases`, because evidence must outlive the row it is evidence of.
+
+Rewards are the fourth property, and it is a negative one: `rewardStateForSession`
+throws if handed an application status, and there is no column on a session or a
+ledger entry that names an application to join against.
+
 ## What is deliberately not here
 
-- Guide messaging and scheduling — Phase 3 (#5).
+- A WebSocket gateway for messaging. The API is the same either way; the web
+  client polls the thread. See the Phase 3 notes in `docs/phases.md`.
 - The connector adapter implementations — Phase 4 (#6). The idempotency,
   snapshot and audit spine they need is built, and
   `DocumentsService.resolveForConnector` is the boundary they must call.
