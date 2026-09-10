@@ -3,6 +3,23 @@ import { Card, CardHeader, EmptyState, SearchableAccordion } from '@modex/ui';
 import { GUIDE_TOPIC_LABELS, type PublishedAnswer } from '@modex/contracts';
 import { ApiError, apiGet } from '@/lib/api';
 
+/**
+ * Rendered per request rather than prerendered at build time.
+ *
+ * This is the first public page whose content comes from the API and whose URL
+ * carries no parameters, so Next tried to prerender it — and a production build
+ * on a machine with no API running failed with `ECONNREFUSED`, which is exactly
+ * what CI is. **A build must not depend on a running API**: the artefact is
+ * meant to be promoted from staging to production, and a build that needs the
+ * backend up is a build that can fail for reasons that have nothing to do with
+ * the code in it.
+ *
+ * The caching is not lost with it. `apiGet` sets `next: { revalidate }`, so the
+ * data is cached for a minute whatever the render mode — the API sees roughly
+ * one request a minute rather than one per visitor.
+ */
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Questions students actually asked',
   description:
