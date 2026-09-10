@@ -76,6 +76,15 @@ jobs:
   security:
     name: Security gates
     runs-on: ubuntu-latest
+    # CodeQL analysed every file happily and then failed on the upload, because
+    # without an explicit block the job inherits whatever the repository's
+    # default token permissions happen to be — which differ between a pull
+    # request and a push, so the same commit passed on #11 and failed on main.
+    # Stated here, the job behaves the same way wherever it runs.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
         with:
