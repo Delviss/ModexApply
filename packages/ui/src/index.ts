@@ -13,6 +13,15 @@ export { Card, CardHeader, type CardProps } from './primitives/card.js';
 export { Field, Input, Select, Textarea, type FieldProps } from './primitives/field.js';
 export { Alert, type AlertProps, type AlertTone } from './primitives/alert.js';
 export { Progress, Skeleton, type ProgressProps } from './primitives/feedback.js';
+export {
+  Checkbox,
+  RadioGroup,
+  RangeField,
+  type CheckboxProps,
+  type RadioGroupProps,
+  type RadioOption,
+  type RangeFieldProps,
+} from './primitives/choice.js';
 
 // Blocks — 21st.dev archetypes, re-themed. See registry.ts for provenance.
 export { AppShell, type AppShellProps, type NavGroup, type NavItem } from './blocks/app-shell.js';
@@ -37,6 +46,7 @@ export {
   type SearchableAccordionProps,
 } from './blocks/searchable-accordion.js';
 export { HeroSection, type HeroAction, type HeroSectionProps } from './blocks/hero-section.js';
+export { Sheet, type SheetProps } from './blocks/sheet.js';
 
 // Signature components — Modex-specific, built rather than sourced (§2.9).
 export {
@@ -54,3 +64,8 @@ export {
   type DisclosureKind,
   type DisclosureNoticeProps,
 } from './signature/disclosure-notice.js';
+export {
+  CompletenessMeter,
+  type CompletenessMeterProps,
+} from './signature/completeness-meter.js';
+export { ScanStatePill, type ScanStatePillProps } from './signature/scan-state-pill.js';

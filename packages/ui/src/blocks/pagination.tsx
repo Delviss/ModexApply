@@ -1,5 +1,6 @@
 'use client';
 
+import { useId } from 'react';
 import { Button } from '../primitives/button.js';
 import { Select } from '../primitives/field.js';
 import { cn } from '../lib/cn.js';
@@ -39,6 +40,11 @@ export function Pagination({
   onPageSizeChange,
   className,
 }: PaginationProps) {
+  // `useId` rather than a constant: two of these on one page -- which compare
+  // and the dashboard both do -- would otherwise emit duplicate DOM ids and
+  // break every label association on the second one.
+  const controlId = useId();
+
   return (
     <div className={cn('mx-pagination', className)}>
       <span aria-live="polite">
@@ -46,11 +52,11 @@ export function Pagination({
         {totalCount !== undefined ? ` of ${totalCount}` : ''}
       </span>
       <div className="mx-pagination__controls">
-        <label className="mx-field__hint" htmlFor="mx-page-size">
+        <label className="mx-field__hint" htmlFor={controlId}>
           Rows per page
         </label>
         <Select
-          id="mx-page-size"
+          id={controlId}
           value={pageSize}
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
           style={{ width: 'auto' }}

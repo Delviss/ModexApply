@@ -39,6 +39,24 @@ services:
       timeout: 5s
       retries: 10
 
+  # Malware scanning for the document vault. Runs locally so the fail-closed
+  # state machine is exercised the same way it is in a deployed environment --
+  # a scan that only ever returns "clean" in development is not a test of it.
+  #
+  # First start downloads signature databases and takes a few minutes; the
+  # healthcheck is what `--wait` blocks on until it is ready.
+  clamav:
+    image: clamav/clamav:latest
+    ports: ['3310:3310']
+    volumes: ['modex-clamav:/var/lib/clamav']
+    healthcheck:
+      test: ['CMD', 'clamdcheck.sh']
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 300s
+
 volumes:
   modex-postgres:
   modex-minio:
+  modex-clamav:

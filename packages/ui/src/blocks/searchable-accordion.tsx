@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Input } from '../primitives/field.js';
 import { ChevronDownIcon, SearchIcon } from '../primitives/icons.js';
 import { EmptyState } from './empty-state.js';
@@ -35,6 +35,11 @@ export function SearchableAccordion({
   searchPlaceholder = 'Filter by keyword',
   className,
 }: SearchableAccordionProps) {
+  // `useId` rather than a constant: two of these on one page -- which compare
+  // and the dashboard both do -- would otherwise emit duplicate DOM ids and
+  // break every label association on the second one.
+  const controlId = useId();
+
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
 
@@ -46,13 +51,13 @@ export function SearchableAccordion({
 
   return (
     <div className={cn(className)}>
-      <label className="mx-visually-hidden" htmlFor="mx-accordion-search">
+      <label className="mx-visually-hidden" htmlFor={controlId}>
         {searchPlaceholder}
       </label>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, width: '100%' }}>
         <SearchIcon size={16} />
         <Input
-          id="mx-accordion-search"
+          id={controlId}
           type="search"
           placeholder={searchPlaceholder}
           value={query}
