@@ -1070,10 +1070,17 @@
   gap: var(--mx-space-6);
 }
 
+/* `fieldset` groups the checkboxes for assistive technology, which is why it is
+   a fieldset and not a div -- but its default border and padding are the one
+   piece of browser chrome that survives the reset, and a boxed rail is not this
+   design system. */
 .mx-filter-group {
   display: flex;
   flex-direction: column;
   gap: var(--mx-space-2);
+  border: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .mx-filter-group__legend {

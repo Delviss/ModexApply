@@ -536,6 +536,30 @@ describe('catalogue search', () => {
     expect(levelFacet!.values.every((value) => value.count === 1)).toBe(true);
   });
 
+  /**
+   * Found by looking at the rendered page: filtering to zero results removed
+   * the country facet from the rail entirely, because no visible programme
+   * carried that country any more — so the filter that caused the zero could
+   * not be unticked, only backed out of.
+   */
+  it('keeps a selected facet value in the rail even when it now matches nothing', async () => {
+    const institution = await activePartner();
+    await publishedProgramme(institution.id);
+
+    const response = await harness.search.search(
+      query({ level: ['doctorate'], country: ['GB'] }),
+      null,
+    );
+    expect(response.results).toHaveLength(0);
+
+    const countryFacet = response.facets.find((facet) => facet.field === 'country');
+    expect(countryFacet).toBeDefined();
+    const gb = countryFacet!.values.find((value) => value.value === 'GB');
+    expect(gb).toBeDefined();
+    // Still listed, and honest about matching nothing right now.
+    expect(gb!.count).toBe(0);
+  });
+
   // Facet counts are computed with the facet's own filter excluded, or the
   // rail collapses to the one value already chosen and cannot be changed.
   it('keeps the other options visible once a facet is filtered', async () => {

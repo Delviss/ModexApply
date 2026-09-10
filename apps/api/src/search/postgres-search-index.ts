@@ -242,14 +242,25 @@ export class PostgresSearchIndex implements SearchIndex {
       const values = grouped
         .map((entry) => ({
           value: String((entry as Record<string, unknown>)[column] ?? ''),
-          label:
-            field === 'institutionId'
-              ? String((entry as Record<string, unknown>)[column] ?? '')
-              : String((entry as Record<string, unknown>)[column] ?? ''),
+          label: String((entry as Record<string, unknown>)[column] ?? ''),
           count: entry._count._all,
         }))
-        .filter((entry) => entry.value.length > 0)
-        .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+        .filter((entry) => entry.value.length > 0);
+
+      // A value the student has ticked must stay in the rail even when it now
+      // matches nothing. Otherwise a filter that narrows to zero results
+      // removes its own checkbox, and the only way back is the browser's back
+      // button -- the student can see what they filtered to but not untick it.
+      const selected = (query[field as keyof ProgramSearchQuery] ?? []) as unknown;
+      if (Array.isArray(selected)) {
+        for (const value of selected as string[]) {
+          if (!values.some((entry) => entry.value === value)) {
+            values.push({ value, label: value, count: 0 });
+          }
+        }
+      }
+
+      values.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
 
       if (values.length > 0) {
         facets.push({ field: field as FacetField, label: FACET_LABELS[field as FacetField], values });
