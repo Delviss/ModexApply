@@ -22,6 +22,7 @@ export const QUEUES = {
   partnershipCascade: 'partnership-cascade',
   searchIndex: 'search-index',
   documentScan: 'document-scan',
+  guideReverification: 'guide-reverification',
   notifications: 'notifications',
 } as const;
 

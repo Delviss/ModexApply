@@ -171,7 +171,7 @@ implemented.
 
 ---
 
-## 7. The four signature components
+## 7. The signature components
 
 These are Modex-specific and built rather than sourced. They encode product
 rules, not visual patterns.
@@ -210,6 +210,40 @@ Surfaces commercial relationships wherever ranking or recommendation is shown.
 Modex exists because the agent model hides who is paying whom; a ranked list with
 no disclosure is the same failure in a nicer interface. It is a landmark, never a
 dismissible toast.
+
+### `<SafetyBanner>` (Phase 3)
+
+Permanent in every conversation surface. **There is no dismiss control and no
+prop that adds one**: a warning that disappears after five seconds is designed
+to be missed, and a warning a scammer can talk somebody into hiding is worse
+than none. It is rendered by `ChatLayout` rather than by each page, so no
+surface that shows a thread can omit it.
+
+It is the one place brand colour carries a message rather than an action —
+`--mx-brand-50` ground, `--mx-brand-700` left rule, `--mx-ink-800` text — and it
+earns that by containing no primary action to compete with. Nothing has gone
+wrong when it appears; it is the standing rule of the room, so it reads as
+attention rather than alarm. Red would be a lie about what is happening, and
+would also be the third red thing on a page that already has error states.
+
+### `<RiskInterstitial>` (Phase 3)
+
+What a flagged message looks like: a `--mx-warning` notice, the report action
+inline, and **the message itself below it, unedited**.
+
+Deleting it would be easier and worse. A student who sees "a message was
+removed" learns nothing, cannot judge whether we were right, and will not
+recognise the next attempt somewhere we are not watching. It is also the only
+version that survives being wrong: a false positive over an innocent sentence
+reads as a false positive, rather than as an invisible act of censorship.
+
+### `<ExpiryCountdown>` (Phase 3)
+
+A guide's verification clock, amber at 30 days and red at 7. Both thresholds are
+imported from the contracts package — the same constants the reverification
+sweep reads — so this component cannot say "plenty of time" while a job
+restricts the account that evening. The number of days and what happens next are
+in the text, never only in the colour.
 
 ---
 

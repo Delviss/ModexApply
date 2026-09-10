@@ -59,6 +59,9 @@ model User {
   consents       ConsentGrant[]
   studentProfile StudentProfile?
   documents      Document[]
+  guideProfile   StudentGuide?
+  conversations  Conversation[]
+  guideSessions  GuideSession[]
 
   @@index([organisationId])
   @@map("users")
@@ -240,6 +243,8 @@ model Institution {
   syncRuns             SyncRun[]
   imports              CatalogueImport[]
   eligibilityOverrides EligibilityOverride[]
+  guides               StudentGuide[]
+  questions            GuideQuestion[]
 
   @@index([country])
   @@index([verificationState])
@@ -294,8 +299,9 @@ model Campus {
   latitude      Float?
   longitude     Float?
 
-  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  institution Institution    @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   programs    Program[]
+  guides      StudentGuide[]
 
   @@index([institutionId])
   @@map("campuses")
@@ -948,4 +954,554 @@ enum CheckOutcome {
   fail
   unknown
   missing_data
+}
+
+// ---------------------------------------------------------------------------
+// Verified Student Guide network (Phase 3 #5)
+// ---------------------------------------------------------------------------
+
+/// Guide lifecycle. `restricted` and `suspended` are separate because one is
+/// the automatic consequence of lapsed evidence — undone the moment the guide
+/// reverifies — and the other is a trust decision that needs a human to undo.
+enum GuideState {
+  pending
+  active
+  restricted
+  suspended
+  revoked
+}
+
+enum GuideVerificationStage {
+  identity_check
+  current_student_evidence
+  institution_confirmation
+  active
+}
+
+enum GuideEvidenceType {
+  university_domain_email
+  student_id_document
+  institution_roster
+}
+
+enum GuideTopic {
+  accommodation
+  cost_of_living
+  campus_life
+  coursework
+  teaching_style
+  part_time_work
+  arrival_and_settling_in
+  city_and_transport
+  societies_and_sport
+  faith_and_community
+  family_and_partners
+  visa_paperwork_experience
+}
+
+/// A verified current student (Phase 3 §1, FR-016).
+///
+/// The row exists only as a link to current-student evidence: `institutionId`
+/// is required, and `evidenceExpiresAt` is a denormalised mirror of the live
+/// `GuideVerification` so the reverification sweep is one indexed scan rather
+/// than a join across every guide on the platform.
+///
+/// Nothing here is a contact detail. Email and phone live on `User`, which no
+/// student-facing projection reads — see `toPublicGuideProfile` in the
+/// contracts package.
+model StudentGuide {
+  id            String  @id @default(uuid())
+  userId        String  @unique
+  institutionId String
+  campusId      String?
+  /// Stable programme key, not a version id: a guide should survive the
+  /// university editing the programme description.
+  programKey    String?
+
+  level       ProgramLevel?
+  yearOfStudy Int?
+  languages   String[]
+  homeCountry String?       @db.Char(2)
+  topics      GuideTopic[]
+  bio         String?
+
+  state GuideState             @default(pending)
+  stage GuideVerificationStage @default(identity_check)
+
+  verifiedAt        DateTime?
+  /// Mirror of the live evidence expiry. The sweep reads this column.
+  evidenceExpiresAt DateTime?
+  /// Set when the 30-day warning goes out, so the hourly sweep warns once.
+  expiryNotifiedAt  DateTime?
+  restrictedAt      DateTime?
+  suspendedAt       DateTime?
+  suspensionReason  String?
+
+  /// Tie-break only (Phase 3 §2). It never substitutes for verification.
+  trustScore         Int     @default(50)
+  /// True only where the university granted the staff role in its partnership
+  /// scope. A guide is never presented as university staff by default.
+  universityEndorsed Boolean @default(false)
+
+  responseTimeHours Float?
+  lastSeenAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institution     Institution             @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  campus          Campus?                 @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  verifications   GuideVerification[]
+  identityChanges GuideIdentityChange[]
+  availability    GuideAvailabilitySlot[]
+  conversations   Conversation[]
+  sessions        GuideSession[]
+  answers         GuideAnswer[]
+  rewards         GuideRewardEntry[]
+
+  @@index([institutionId, state])
+  @@index([state, evidenceExpiresAt])
+  @@map("student_guides")
+}
+
+/// Evidence for one verification step (Phase 3 §1).
+///
+/// Stored separately from the guide record and never exposed publicly, exactly
+/// as institution evidence is in Phase 1 §2. `evidenceRef` is an object key or a
+/// challenge id — the document itself never enters the database.
+model GuideVerification {
+  id                 String            @id @default(uuid())
+  guideId            String
+  evidenceType       GuideEvidenceType
+  evidenceRef        String?
+  /// Short, internal description of what was checked.
+  summary            String
+  verifiedAt         DateTime?
+  expiresAt          DateTime?
+  reviewerId         String?
+  /// Single-use token hash for the university-domain email challenge. The token
+  /// itself is never stored, and never written to a log.
+  challengeTokenHash String?
+  challengeExpiresAt DateTime?
+  createdAt          DateTime          @default(now())
+
+  guide StudentGuide @relation(fields: [guideId], references: [id], onDelete: Cascade)
+
+  @@index([guideId, evidenceType])
+  @@index([expiresAt])
+  @@map("guide_verifications")
+}
+
+/// Identity drift (TRD §14): a guide who keeps changing which university or
+/// programme they study is forced back through verification.
+model GuideIdentityChange {
+  id            String   @id @default(uuid())
+  guideId       String
+  field         String
+  previousValue String?
+  newValue      String?
+  changedAt     DateTime @default(now())
+
+  guide StudentGuide @relation(fields: [guideId], references: [id], onDelete: Cascade)
+
+  @@index([guideId, changedAt])
+  @@map("guide_identity_changes")
+}
+
+/// Availability with topics and hours (Phase 3 §2).
+///
+/// `booked` is incremented inside the booking transaction under a row lock, so
+/// two students clicking the same slot cannot both get it. The platform prevents
+/// overbooking; the guide is not asked to notice it.
+model GuideAvailabilitySlot {
+  id       String       @id @default(uuid())
+  guideId  String
+  startsAt DateTime
+  endsAt   DateTime
+  topics   GuideTopic[]
+  capacity Int          @default(1)
+  booked   Int          @default(0)
+
+  createdAt DateTime @default(now())
+
+  guide    StudentGuide   @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  sessions GuideSession[]
+
+  @@index([guideId, startsAt])
+  @@map("guide_availability_slots")
+}
+
+enum ConversationContextType {
+  institution
+  program
+  application
+  general
+}
+
+enum ConversationStatus {
+  open
+  closed
+  suspended
+  archived
+}
+
+/// A conversation between one student and one guide (Phase 3 §3, FR-008).
+///
+/// Scoped to a context wherever possible — an institution, a programme, later an
+/// application — because "which university are we talking about?" is the first
+/// thing both a moderator and a returning student need to know.
+model Conversation {
+  id          String                  @id @default(uuid())
+  studentId   String
+  guideId     String
+  contextType ConversationContextType @default(general)
+  contextId   String?
+  status      ConversationStatus      @default(open)
+
+  createdAt     DateTime  @default(now())
+  lastMessageAt DateTime?
+  closedAt      DateTime?
+  closedReason  String?
+
+  student  User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guide    StudentGuide @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([studentId, guideId, contextType, contextId])
+  @@index([studentId, lastMessageAt])
+  @@index([guideId, lastMessageAt])
+  @@map("conversations")
+}
+
+enum MessageSenderRole {
+  student
+  guide
+  system
+}
+
+enum MessageKind {
+  text
+  attachment
+  system
+}
+
+enum MessageModerationState {
+  clean
+  flagged
+  withheld
+  under_review
+}
+
+enum SystemMessageKind {
+  conversation_opened
+  guide_restricted
+  guide_suspended
+  conversation_closed
+  risk_flagged
+  session_booked
+  session_cancelled
+  report_submitted
+}
+
+model Message {
+  id              String                 @id @default(uuid())
+  conversationId  String
+  /// Null for a system message; there is no user behind one.
+  senderId        String?
+  senderRole      MessageSenderRole
+  kind            MessageKind            @default(text)
+  systemKind      SystemMessageKind?
+  body            String
+  /// A `DocumentVersion` id. The vault's scan rules still decide whether it can
+  /// be opened; sharing a file in a chat does not launder it.
+  attachmentRef   String?
+  moderationState MessageModerationState @default(clean)
+  /// Why it was flagged, shown above the message. The body is never edited.
+  flagSummary     String?
+
+  sentAt DateTime  @default(now())
+  readAt DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, sentAt])
+  @@map("messages")
+}
+
+enum RiskSignal {
+  payment_solicitation
+  guarantee_claim
+  off_platform_solicitation
+  identity_drift
+  message_spam
+  impersonation
+}
+
+enum RiskSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+/// **Evidence, preserved before any moderation action** (Phase 3 §4).
+///
+/// `bodySnapshot` is the message exactly as it was sent, copied here at flag
+/// time. The message row is never edited — but a row that can be edited is not
+/// evidence, so the copy lives in a table the application has no update or
+/// delete path to, and the migration installs the same append-only trigger the
+/// audit log uses.
+///
+/// `messageId` and `trustCaseId` are plain columns rather than foreign keys, and
+/// that is deliberate: **evidence outlives the thing it is evidence of.** A
+/// message row removed under a data-erasure request, or a case deleted in some
+/// future cleanup, must not be able to take the record of a payment demand with
+/// it — and a foreign key would do exactly that, since a cascade or a restrict
+/// both make the evidence a hostage of the row it describes.
+model MessageFlag {
+  id        String       @id @default(uuid())
+  messageId String
+  signal    RiskSignal
+  severity  RiskSeverity
+  /// The exact substrings that matched. Short, and quoted from the message.
+  matches      String[]
+  bodySnapshot String
+  /// SHA-256 of the snapshot, so tampering at the storage layer is detectable.
+  bodyHash    String
+  trustCaseId String?
+  createdAt   DateTime @default(now())
+
+  @@index([messageId])
+  @@index([trustCaseId])
+  @@index([signal, severity])
+  @@map("message_flags")
+}
+
+enum TrustCaseType {
+  payment_solicitation
+  guarantee_claim
+  off_platform_contact
+  impersonation
+  identity_drift
+  spam
+  harassment
+  fraudulent_offer
+  false_institution_claim
+  other
+}
+
+enum TrustCaseState {
+  open
+  triaging
+  evidence_preserved
+  actioned
+  dismissed
+  escalated
+}
+
+enum ReportableTargetType {
+  guide
+  message
+  conversation
+  offer
+  institution
+  program
+  user
+}
+
+/// Any user can report any person, offer, institutional claim or message
+/// (FR-015). The case is the auditable record of that report.
+model TrustCase {
+  id            String               @id @default(uuid())
+  type          TrustCaseType
+  /// Null when the platform opened the case itself, from a risk rule.
+  reporterId    String?
+  targetType    ReportableTargetType
+  targetId      String
+  state         TrustCaseState       @default(open)
+  severity      RiskSeverity         @default(medium)
+  summary       String
+  /// What the reporter saw, in their words.
+  description   String?
+  assignedTo    String?
+  correlationId String
+
+  openedAt DateTime  @default(now())
+  closedAt DateTime?
+
+  events TrustCaseEvent[]
+
+  @@index([state, severity])
+  @@index([targetType, targetId])
+  @@index([reporterId])
+  @@map("trust_cases")
+}
+
+model TrustCaseEvent {
+  id        String          @id @default(uuid())
+  caseId    String
+  fromState TrustCaseState?
+  toState   TrustCaseState
+  note      String?
+  actorId   String?
+  createdAt DateTime        @default(now())
+
+  trustCase TrustCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@map("trust_case_events")
+}
+
+enum SessionChannel {
+  chat
+  audio
+  video
+}
+
+enum SessionStatus {
+  requested
+  confirmed
+  completed
+  cancelled
+  no_show
+}
+
+enum RewardState {
+  not_earned
+  earned
+  approved
+  paid
+  withheld
+}
+
+enum RewardKind {
+  fixed_stipend
+  platform_credit
+  scholarship_contribution
+  certificate
+  university_supported
+}
+
+/// A scheduled session (Phase 3 §3).
+///
+/// Note what this table does **not** have: an amount, a payee, or a payment
+/// reference. There is no direct payment path to a guide, and the schema is
+/// where that is true rather than the terms of service.
+model GuideSession {
+  id        String  @id @default(uuid())
+  studentId String
+  guideId   String
+  slotId    String?
+
+  channel         SessionChannel @default(chat)
+  scheduledFor    DateTime
+  durationMinutes Int            @default(30)
+  status          SessionStatus  @default(requested)
+  topics          GuideTopic[]
+  /// Modex-managed joining detail. A room reference, never a phone number.
+  joinRef         String?
+
+  /// Depends on session delivery and nothing else — never on an application
+  /// outcome (Phase 3 §5). There is deliberately no application column on this
+  /// table to join against.
+  rewardState RewardState @default(not_earned)
+
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  disputedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student User                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guide   StudentGuide           @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  slot    GuideAvailabilitySlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  rewards GuideRewardEntry[]
+
+  @@index([studentId, scheduledFor])
+  @@index([guideId, scheduledFor])
+  @@index([status])
+  @@map("guide_sessions")
+}
+
+/// The reward ledger (Phase 3 §5). Payouts run through the Modex-controlled
+/// workflow; the finance surface in #8 approves and pays them.
+model GuideRewardEntry {
+  id          String      @id @default(uuid())
+  guideId     String
+  sessionId   String?
+  kind        RewardKind  @default(fixed_stipend)
+  state       RewardState @default(earned)
+  /// Integer minor units + ISO 4217, like every other money column here. Null
+  /// for a certificate, which is a reward with no amount.
+  amountMinor Int?
+  currency    String?     @db.Char(3)
+  earnedAt    DateTime?
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  note        String?
+
+  createdAt DateTime @default(now())
+
+  guide   StudentGuide  @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  session GuideSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([guideId, state])
+  @@map("guide_reward_entries")
+}
+
+enum QaState {
+  draft
+  pending_moderation
+  published
+  rejected
+  withdrawn
+}
+
+/// A public question. `askedById` is cleared when the answer is published: the
+/// question becomes public, the student who asked it does not.
+model GuideQuestion {
+  id            String     @id @default(uuid())
+  askedById     String?
+  institutionId String
+  programKey    String?
+  topic         GuideTopic
+  body          String
+  createdAt     DateTime   @default(now())
+
+  institution Institution   @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  answers     GuideAnswer[]
+
+  @@index([institutionId, topic])
+  @@map("guide_questions")
+}
+
+/// An answer needs **two** independent yeses to be published — a moderator's
+/// and the guide's own (Phase 3 §3). Neither column can be inferred from the
+/// other, and `canPublishAnswer` in the contracts package requires both.
+model GuideAnswer {
+  id         String  @id @default(uuid())
+  questionId String
+  guideId    String
+  body       String
+  state      QaState @default(draft)
+
+  moderatedAt      DateTime?
+  moderatedBy      String?
+  moderationNote   String?
+  guideConsentedAt DateTime?
+  publishedAt      DateTime?
+  helpfulCount     Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  question GuideQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  guide    StudentGuide  @relation(fields: [guideId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@index([state, publishedAt])
+  @@map("guide_answers")
 }

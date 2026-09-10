@@ -47,12 +47,43 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = Object.freeze([
   { name: 'ink-600 on canvas (secondary text, captions)', foreground: neutral.ink600, background: neutral.canvas, use: 'body' },
   { name: 'ink-600 on subtle (zebra rows)', foreground: neutral.ink600, background: neutral.subtle, use: 'body' },
   {
+    name: 'ink-800 on subtle (system message in a thread)',
+    foreground: neutral.ink800,
+    background: neutral.subtle,
+    use: 'body',
+  },
+  {
+    name: 'danger text on subtle (suspension notice in a thread)',
+    foreground: semantic.dangerText,
+    background: neutral.subtle,
+    use: 'body',
+  },
+  {
     name: 'ink-600 on brand-50 (text on a tinted/selected row)',
     foreground: neutral.ink600,
     background: brand[50],
     use: 'body',
   },
   { name: 'brand-700 on brand-50 (badge label on tinted fill)', foreground: brand[700], background: brand[50], use: 'body' },
+  {
+    name: 'ink-800 on brand-50 (safety banner text)',
+    foreground: neutral.ink800,
+    background: brand[50],
+    use: 'body',
+    note: 'Phase 3: the permanent safety banner in every conversation. Brand-tinted ground, ink text — attention without alarm.',
+  },
+  {
+    name: 'brand-700 on brand-50 (safety banner rule and icon)',
+    foreground: brand[700],
+    background: brand[50],
+    use: 'ui',
+  },
+  {
+    name: 'ink-900 on brand-50 (own message bubble)',
+    foreground: neutral.ink900,
+    background: brand[50],
+    use: 'body',
+  },
   { name: 'brand-700 on brand-100 (badge label)', foreground: brand[700], background: brand[100], use: 'body' },
 
   // --- Semantics. Text uses the -text sibling; fills use the base token. ---

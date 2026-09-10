@@ -12,6 +12,11 @@ import { SearchModule } from './search/search.module.js';
 import { EligibilityModule } from './eligibility/eligibility.module.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { StudentsModule } from './students/students.module.js';
+import { GuidesModule } from './guides/guides.module.js';
+import { MessagingModule } from './messaging/messaging.module.js';
+import { SessionsModule } from './sessions/sessions.module.js';
+import { TrustModule } from './trust/trust.module.js';
+import { QaModule } from './qa/qa.module.js';
 import { WorkersModule } from './workers/workers.module.js';
 import { HealthModule } from './health/health.module.js';
 import { AllExceptionsFilter } from './common/errors/exception.filter.js';
@@ -38,6 +43,11 @@ import { loadEnv } from './config/env.js';
     EligibilityModule,
     DocumentsModule,
     StudentsModule,
+    GuidesModule,
+    MessagingModule,
+    SessionsModule,
+    TrustModule,
+    QaModule,
     WorkersModule,
     HealthModule,
   ],

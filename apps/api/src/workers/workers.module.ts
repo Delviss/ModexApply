@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { SearchModule } from '../search/search.module.js';
 import { DocumentsModule } from '../documents/documents.module.js';
+import { GuidesModule } from '../guides/guides.module.js';
 import { WorkersService } from './workers.service.js';
 
 @Module({
-  imports: [SearchModule, DocumentsModule],
+  imports: [SearchModule, DocumentsModule, GuidesModule],
   providers: [WorkersService],
   exports: [WorkersService],
 })

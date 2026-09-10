@@ -54,7 +54,19 @@ export const PERMISSIONS = [
   'document:write',
   'document:delete',
   'guide:read',
+  'guide:write',
   'guide:verify',
+  'guide:suspend',
+  'message:read',
+  'message:write',
+  'session:book',
+  'session:manage',
+  'qa:answer',
+  'qa:moderate',
+  'trust_case:read',
+  'trust_case:write',
+  'reward:read',
+  'reward:approve',
   'application:read',
   'application:write',
   'application:submit',
@@ -80,11 +92,34 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'document:read',
     'document:write',
     'document:delete',
+    'guide:read',
+    'message:read',
+    'message:write',
+    'session:book',
+    'trust_case:write',
     'application:read',
     'application:write',
     'offer:read',
   ],
-  guide: ['institution:read', 'program:read'],
+  /**
+   * A guide's grant is deliberately small. They read the catalogue, run their
+   * own profile and availability, answer questions and message the students who
+   * contacted them — and that is all. Nothing here lets a guide see an
+   * application, an offer, or another student's profile, because a guide who can
+   * see an application is on their way to becoming an agent.
+   */
+  guide: [
+    'institution:read',
+    'program:read',
+    'guide:read',
+    'guide:write',
+    'message:read',
+    'message:write',
+    'session:manage',
+    'qa:answer',
+    'trust_case:write',
+    'reward:read',
+  ],
   university_staff: [
     'institution:read',
     'partnership:read',
@@ -119,6 +154,11 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'program:read',
     'guide:read',
     'guide:verify',
+    'guide:suspend',
+    'message:read',
+    'qa:moderate',
+    'trust_case:read',
+    'trust_case:write',
     'offer:verify',
     'audit:read',
   ],
@@ -136,11 +176,26 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'catalogue:import',
     'catalogue:sync',
     'guide:read',
+    'trust_case:read',
+    'session:manage',
     'application:read',
     'offer:read',
     'audit:read',
   ],
-  finance: ['institution:read', 'partnership:read', 'program:read', 'offer:read', 'audit:read'],
+  /**
+   * Finance approves and pays rewards. It cannot read a message, cannot see a
+   * trust case, and — the point of Phase 3 §5 — has no permission anywhere that
+   * would let a payout be conditioned on an application.
+   */
+  finance: [
+    'institution:read',
+    'partnership:read',
+    'program:read',
+    'offer:read',
+    'reward:read',
+    'reward:approve',
+    'audit:read',
+  ],
   superadmin: PERMISSIONS,
 });
 

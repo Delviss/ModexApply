@@ -18,8 +18,10 @@ See [issue #1](https://github.com/Delviss/ModexApply/issues/1) for the delivery 
 
 ```
 apps/
-  api/           NestJS + Prisma — platform core, catalogue, search, vault, eligibility
-  web/           Next.js — public pages, catalogue admin, student workspace
+  api/           NestJS + Prisma — platform core, catalogue, search, vault,
+                 eligibility, the guide network and the anti-scam pipeline
+  web/           Next.js — public pages, catalogue admin, student workspace,
+                 guide directory, messaging and the public Q&A
 packages/
   contracts/     Shared domain contracts (money, errors, access, provenance…)
   ui/            Red Velvet design system — tokens, blocks, signature components
@@ -55,7 +57,7 @@ Two of those gates are unusual and deliberate:
 
 ## Status
 
-Phases 0, 1 and 2 of the epic. See [docs/phases.md](docs/phases.md) for what is
+Phases 0 to 3 of the epic. See [docs/phases.md](docs/phases.md) for what is
 built, what is deliberately deferred, and why.
 
 Phase 2 adds the student half of the loop: a reusable profile, a versioned
