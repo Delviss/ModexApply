@@ -17,6 +17,7 @@ import { AppError } from '../common/errors/app-error.js';
 import { assertOrganisationAccess } from '../auth/access-context.js';
 import { toAuditActor } from '../auth/audit-actor.js';
 import { supersede } from './effective-dating.js';
+import { QUEUES, QueueService } from '../queue/queue.service.js';
 
 export interface ProgramInput {
   name: string;
@@ -59,7 +60,20 @@ export class CatalogueService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly queue: QueueService,
   ) {}
+
+  /**
+   * Queues a search reindex for a programme.
+   *
+   * Enqueued rather than done inline: rebuilding a search document reads the
+   * institution, the intakes and the fees, and a catalogue write should not
+   * wait on that. The index is allowed to be a second behind; the catalogue is
+   * not allowed to be slow to write.
+   */
+  private async reindex(programKey: string): Promise<void> {
+    await this.queue.enqueue(QUEUES.searchIndex, 'reindex', { programKey });
+  }
 
   async createProgram(access: AccessContext, institutionId: string, input: ProgramInput) {
     assertOrganisationAccess(access, institutionId);
@@ -92,6 +106,7 @@ export class CatalogueService {
       metadata: { institutionId, programKey: program.programKey, name: input.name },
     });
 
+    await this.reindex(program.programKey);
     return program;
   }
 
@@ -182,6 +197,7 @@ export class CatalogueService {
       },
     });
 
+    await this.reindex(created.programKey);
     return created;
   }
 
@@ -248,6 +264,7 @@ export class CatalogueService {
       metadata: { programKey, version: program.version },
     });
 
+    await this.reindex(published.programKey);
     return published;
   }
 
@@ -270,6 +287,7 @@ export class CatalogueService {
       objectId: program.id,
       metadata: { programKey, reason },
     });
+    await this.reindex(updated.programKey);
     return updated;
   }
 
@@ -327,6 +345,7 @@ export class CatalogueService {
       metadata: { programKey, applicationDeadline: input.applicationDeadline.toISOString() },
     });
 
+    await this.reindex(programKey);
     return intake;
   }
 
@@ -384,6 +403,7 @@ export class CatalogueService {
       metadata: { programKey, ruleType: input.ruleType, sourceRef: input.sourceRef },
     });
 
+    await this.reindex(programKey);
     return requirement;
   }
 
@@ -395,7 +415,7 @@ export class CatalogueService {
     if (program === null) throw AppError.notFound('Programme');
     assertOrganisationAccess(access, program.institutionId);
 
-    return this.prisma.programFees.create({
+    const fees = await this.prisma.programFees.create({
       data: {
         programId: program.id,
         intakeId: input.intakeId ?? null,
@@ -411,6 +431,11 @@ export class CatalogueService {
         reviewedBy: access.userId,
       },
     });
+
+    // Fees are the most consequential thing search shows after the name: a
+    // stale price is the failure this whole freshness model exists to prevent.
+    await this.reindex(programKey);
+    return fees;
   }
 
   /**

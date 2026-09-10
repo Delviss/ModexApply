@@ -17,4 +17,23 @@ export const Public = () => SetMetadata(PUBLIC_KEY, true);
 export const RequirePermissions = (...permissions: Permission[]) =>
   SetMetadata(PERMISSIONS_KEY, permissions);
 
-export const RequireConsent = (...scopes: ConsentScope[]) => SetMetadata(CONSENT_KEY, scopes);
+export interface ConsentRequirement {
+  scopes: ConsentScope[];
+  /**
+   * Route parameter naming the consent subject.
+   *
+   * Defaults to `id`, which is what every Phase 0/1 route used. Routes that
+   * address their subject differently -- `:documentId`, `:institutionId` --
+   * must say so, or the guard has no subject to check and silently degrades to
+   * a scope-only check: "this student consented to share *something* with
+   * *somebody*", which is not the question being asked.
+   */
+  subjectParam: string;
+}
+
+export const RequireConsent = (...scopes: ConsentScope[]) =>
+  SetMetadata<string, ConsentRequirement>(CONSENT_KEY, { scopes, subjectParam: 'id' });
+
+/** `@RequireConsent` where the subject is named by a different route parameter. */
+export const RequireConsentOn = (subjectParam: string, ...scopes: ConsentScope[]) =>
+  SetMetadata<string, ConsentRequirement>(CONSENT_KEY, { scopes, subjectParam });

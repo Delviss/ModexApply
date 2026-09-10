@@ -76,9 +76,9 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     name: 'Omni Command Palette',
     section: 'app-shell',
     primary: false,
-    status: 'deferred',
-    implementation: null,
-    note: 'Async multi-source upgrade path. Lands with catalogue search in Phase 2, when there is something to search across.',
+    status: 'implemented',
+    implementation: 'CommandPalette (student dashboard actions)',
+    note: 'Multi-source palette over programmes, documents and profile actions, now that Phase 2 gives it something to search across.',
   },
   {
     registry: '@cnippet-dev/v-skeleton-8',
@@ -358,9 +358,9 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     name: 'Search With Category',
     section: 'public',
     primary: false,
-    status: 'deferred',
-    implementation: null,
-    note: 'Landing search entry point. Lands with Phase 2 catalogue search (#4).',
+    status: 'implemented',
+    implementation: 'SearchEntry (apps/web)',
+    note: 'Category-scoped landing search — destination, subject, level — feeding the Phase 2 catalogue query.',
   },
   {
     registry: '@cnippet-dev/v-accordion-11',
@@ -370,6 +370,35 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     status: 'implemented',
     implementation: 'SearchableAccordion',
     note: 'Live keyword filter. Used for the programme requirement list in Phase 1 and the public guide Q&A in Phase 3.',
+  },
+
+  // Phase 2 (#4) archetypes.
+  {
+    registry: '@ruixen.ui/flexi-filter-table',
+    name: 'Flexi Filter Table (rail)',
+    section: 'forms',
+    primary: false,
+    status: 'implemented',
+    implementation: 'FilterRail (apps/web) + Checkbox/RangeField',
+    note: 'The configurable facet set — country, level, subject, intake, tuition, duration, language — as a persistent rail, with Sheet carrying it on mobile.',
+  },
+  {
+    registry: '@shadcnspace/progress-02',
+    name: 'Onboarding Stepper Progress',
+    section: 'forms',
+    primary: false,
+    status: 'implemented',
+    implementation: 'CompletenessMeter',
+    note: 'Step counter plus bar. Rebound to a section count rather than a bare percentage, so it cannot read as an admission likelihood.',
+  },
+  {
+    registry: '@ephraimduncan/file-upload-01',
+    name: 'File Upload with Preview (scan state)',
+    section: 'files',
+    primary: false,
+    status: 'implemented',
+    implementation: 'ScanStatePill',
+    note: 'The vendor block ships success and error only; a quarantined file needs a permanently blocked state, which is added here.',
   },
 ]);
 

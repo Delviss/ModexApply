@@ -763,3 +763,538 @@
 @media (prefers-reduced-motion: reduce) {
   .mx-skeleton { animation: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Phase 2 — choice controls, sheet, completeness, scan state
+   --------------------------------------------------------------------------- */
+
+.mx-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+}
+
+.mx-choice__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+}
+
+.mx-choice__row .mx-choice__label {
+  flex: 1 1 auto;
+}
+
+.mx-choice__label {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  cursor: pointer;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text);
+  padding: var(--mx-space-1) 0;
+}
+
+/* The native input stays in the layout and keyboard order; it is the painted
+   box that is swapped. Hiding it with display:none would take it out of both. */
+.mx-choice__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.mx-choice__box,
+.mx-choice__radio {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--mx-border-input);
+  background: var(--mx-surface);
+  color: transparent;
+  transition: background var(--mx-motion-fast) var(--mx-motion-easing);
+}
+
+.mx-choice__box {
+  border-radius: 4px;
+}
+
+.mx-choice__radio {
+  border-radius: 50%;
+}
+
+.mx-choice__input:checked + .mx-choice__label .mx-choice__box {
+  background: var(--mx-action);
+  border-color: var(--mx-action);
+  color: var(--mx-action-fg);
+}
+
+.mx-choice__input:checked + .mx-choice__label .mx-choice__radio {
+  border-color: var(--mx-action);
+  border-width: 5px;
+}
+
+/* The focus ring has to follow the visible box, since the real input is
+   clipped to a pixel. Same ring as every other control. */
+.mx-choice__input:focus-visible + .mx-choice__label .mx-choice__box,
+.mx-choice__input:focus-visible + .mx-choice__label .mx-choice__radio {
+  outline: var(--mx-focus-width) solid var(--mx-focus-color);
+  outline-offset: var(--mx-focus-offset);
+}
+
+.mx-choice__input:disabled + .mx-choice__label {
+  color: var(--mx-text-disabled);
+  cursor: not-allowed;
+}
+
+.mx-choice__text {
+  flex: 1 1 auto;
+}
+
+.mx-choice__meta {
+  color: var(--mx-text-muted);
+  font-size: var(--mx-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-radiogroup {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+}
+
+.mx-range {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+}
+
+.mx-range__input {
+  width: 100%;
+  accent-color: var(--mx-action);
+}
+
+.mx-range__value {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-sheet__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(26 20 22 / 45%); /* mx-allow-literal-colour: scrim over arbitrary page content, not a palette surface */
+  display: flex;
+  z-index: 50;
+}
+
+.mx-sheet {
+  background: var(--mx-surface);
+  color: var(--mx-text);
+  box-shadow: var(--mx-shadow-3);
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  animation: mx-sheet-in var(--mx-motion-surface) var(--mx-motion-easing);
+}
+
+.mx-sheet[data-variant='center'] {
+  margin: auto;
+  width: min(560px, calc(100% - var(--mx-space-8)));
+  border-radius: var(--mx-radius-sheet);
+}
+
+.mx-sheet[data-variant='side'] {
+  margin-inline-end: auto;
+  width: min(360px, 92%);
+  height: 100%;
+  border-start-end-radius: var(--mx-radius-sheet);
+  border-end-end-radius: var(--mx-radius-sheet);
+}
+
+@keyframes mx-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.mx-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mx-space-3);
+  padding: var(--mx-space-4) var(--mx-space-6);
+  border-bottom: 1px solid var(--mx-border);
+}
+
+.mx-sheet__body {
+  padding: var(--mx-space-6);
+  overflow-y: auto;
+}
+
+.mx-sheet__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--mx-space-2);
+  padding: var(--mx-space-4) var(--mx-space-6);
+  border-top: 1px solid var(--mx-border);
+}
+
+.mx-completeness {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+}
+
+.mx-completeness__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mx-space-3);
+}
+
+.mx-completeness__label {
+  margin: 0;
+  font-weight: var(--mx-weight-semibold);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-heading);
+}
+
+.mx-completeness__count {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-completeness__track {
+  height: 8px;
+  border-radius: var(--mx-radius-pill);
+  background: var(--mx-subtle);
+  overflow: hidden;
+}
+
+.mx-completeness__bar {
+  height: 100%;
+  background: var(--mx-action);
+  transition: width var(--mx-motion-surface) var(--mx-motion-easing);
+}
+
+.mx-completeness__note,
+.mx-completeness__unlocks {
+  color: var(--mx-text-muted);
+  font-size: var(--mx-text-xs);
+}
+
+.mx-completeness__note {
+  margin: 0;
+}
+
+.mx-completeness__done {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-success-text);
+}
+
+.mx-completeness__gaps {
+  margin: 0;
+  padding-inline-start: var(--mx-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+  font-size: var(--mx-text-sm);
+}
+
+.mx-scan {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  flex-wrap: wrap;
+}
+
+.mx-scan__detail {
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+}
+
+.mx-scan[data-state='quarantined'] .mx-scan__detail {
+  color: var(--mx-danger-text);
+}
+
+.mx-scan[data-state='failed'] .mx-scan__detail {
+  color: var(--mx-warning-text);
+}
+
+.mx-scan__spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--mx-border-strong);
+  border-top-color: var(--mx-ink-500);
+  border-radius: 50%;
+  animation: mx-spin 800ms linear infinite;
+}
+
+@keyframes mx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The token layer already collapses durations, but an infinite spin has to be
+   stopped outright rather than made fast. */
+@media (prefers-reduced-motion: reduce) {
+  .mx-scan__spinner {
+    animation: none;
+  }
+  .mx-sheet {
+    animation: none;
+  }
+}
+
+/* Search surfaces -------------------------------------------------------- */
+
+.mx-filter-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-6);
+}
+
+/* `fieldset` groups the checkboxes for assistive technology, which is why it is
+   a fieldset and not a div -- but its default border and padding are the one
+   piece of browser chrome that survives the reset, and a boxed rail is not this
+   design system. */
+.mx-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.mx-filter-group__legend {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  font-weight: var(--mx-weight-semibold);
+  color: var(--mx-text-heading);
+}
+
+.mx-result-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+}
+
+.mx-result-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-space-3);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+
+.mx-search-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--mx-space-8) var(--mx-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+}
+
+.mx-search-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+}
+
+.mx-search {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: var(--mx-space-6);
+  align-items: start;
+}
+
+.mx-search__rail {
+  position: sticky;
+  top: var(--mx-space-6);
+}
+
+/* The rail becomes a sheet on a phone; the toggle is hidden until it does, so
+   there is never a button that opens a panel already on screen. */
+.mx-search__filter-toggle {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .mx-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mx-search__rail {
+    display: none;
+  }
+  .mx-search__filter-toggle {
+    display: inline-flex;
+  }
+}
+
+.mx-search__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+}
+
+.mx-search__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mx-space-3);
+}
+
+.mx-search__count {
+  margin: 0;
+  font-weight: var(--mx-weight-medium);
+  color: var(--mx-text);
+}
+
+.mx-search__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+}
+
+.mx-search__results,
+.mx-search__suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-3);
+}
+
+.mx-search__suggestions li {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  flex-wrap: wrap;
+}
+
+/* Student surfaces ------------------------------------------------------- */
+
+.mx-dashboard,
+.mx-vault,
+.mx-profile,
+.mx-compare-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--mx-space-8) var(--mx-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+}
+
+.mx-login {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: var(--mx-space-12) var(--mx-space-6);
+}
+
+.mx-login__form,
+.mx-login__fields,
+.mx-profile__fields,
+.mx-vault__upload-form,
+.mx-dashboard__section,
+.mx-compare-page__panel,
+.mx-profile__form,
+.mx-vault__uploader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+}
+
+.mx-login__form,
+.mx-dashboard__section,
+.mx-compare-page__panel,
+.mx-profile__form,
+.mx-vault__uploader,
+.mx-vault__empty {
+  margin-block-start: var(--mx-space-4);
+}
+
+.mx-dashboard__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--mx-space-3);
+}
+
+.mx-dashboard__columns,
+.mx-profile__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--mx-space-4);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .mx-dashboard__columns,
+  .mx-profile__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mx-profile__aside {
+  position: sticky;
+  top: var(--mx-space-6);
+}
+
+.mx-dashboard__tasks {
+  margin: 0;
+  padding-inline-start: var(--mx-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+}
+
+/* The save indicator is text, not a colour change: "Saved" has to be legible
+   to somebody who cannot see the difference between grey and green. */
+.mx-profile__save {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+
+.mx-profile__save[data-state='saved'] {
+  color: var(--mx-success-text);
+}
+
+.mx-profile__save[data-state='error'] {
+  color: var(--mx-danger-text);
+}
+
+.mx-vault__expiry {
+  font-size: var(--mx-text-xs);
+  color: var(--mx-warning-text);
+}
+
+.mx-vault__expiry[data-state='expired'] {
+  color: var(--mx-danger-text);
+}
+
+.mx-compare-page__eligibility {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+}

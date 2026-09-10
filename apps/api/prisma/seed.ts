@@ -216,9 +216,102 @@ async function main(): Promise<void> {
     },
   });
 
+  // A student, so the dashboard, profile and vault have somebody to be about.
+  // Deliberately half-complete: an empty profile shows every gap and a full one
+  // shows none, and neither exercises the "some of this is missing" states that
+  // are most of what these surfaces do.
+  const student = await prisma.user.create({
+    data: {
+      email: 'ada@example.com',
+      displayName: 'Ada Bello',
+      status: 'active',
+      emailVerifiedAt: new Date(),
+      roles: { create: { role: 'student' } },
+      studentProfile: {
+        create: {
+          nationality: 'NG',
+          countryOfResidence: 'NG',
+          dateOfBirth: new Date('2003-04-11'),
+          intendedLevel: 'postgraduate_taught',
+          intendedField: 'Computer Science',
+          preferredCountries: ['GB'],
+          targetIntake: '2027-09',
+          academicRecords: {
+            create: {
+              level: 'bachelors',
+              institutionName: 'University of Lagos',
+              countryCode: 'NG',
+              fieldOfStudy: 'Computer Science',
+              gradeScale: 'gpa_4',
+              gradeValue: 3.5,
+              startedAt: new Date('2021-09-01'),
+              completedAt: new Date('2025-07-01'),
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // One document per interesting scan state, so the vault renders all of them
+  // without waiting on a real scanner.
+  const transcript = await prisma.document.create({
+    data: { ownerId: student.id, type: 'transcript', displayName: 'Transcript.pdf' },
+  });
+  const cleanVersion = await prisma.documentVersion.create({
+    data: {
+      documentId: transcript.id,
+      version: 1,
+      objectKey: 'documents/seed/transcript-v1',
+      checksum: 'a'.repeat(64),
+      sizeBytes: 182_311,
+      contentType: 'application/pdf',
+      scanState: 'clean',
+      scannedAt: new Date(),
+      uploadComplete: true,
+    },
+  });
+  await prisma.document.update({
+    where: { id: transcript.id },
+    data: { currentVersionId: cleanVersion.id },
+  });
+
+  const passport = await prisma.document.create({
+    data: {
+      ownerId: student.id,
+      type: 'passport',
+      displayName: 'Passport.pdf',
+      // Inside the 90-day warning window, so the expiry state is visible in
+      // development without waiting three months for it.
+      expiryAt: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+    },
+  });
+  const quarantined = await prisma.documentVersion.create({
+    data: {
+      documentId: passport.id,
+      version: 1,
+      objectKey: 'documents/seed/passport-v1',
+      checksum: 'b'.repeat(64),
+      sizeBytes: 90_112,
+      contentType: 'application/pdf',
+      scanState: 'quarantined',
+      scanDetail: 'Malware signature: Eicar-Test-Signature',
+      scannedAt: new Date(),
+      uploadComplete: true,
+    },
+  });
+  await prisma.document.update({
+    where: { id: passport.id },
+    data: { currentVersionId: quarantined.id },
+  });
+
   console.warn(
-    `Seeded: ${institution.displayName} (verified, 2 programmes) and ` +
-      'Northern Institute of Technology (mid-onboarding).',
+    `Seeded: ${institution.displayName} (verified, 2 programmes), ` +
+      'Northern Institute of Technology (mid-onboarding), and ' +
+      `${student.displayName} (part-complete profile, one clean and one quarantined document).`,
+  );
+  console.warn(
+    'Run `pnpm --filter @modex/api exec tsx prisma/reindex.ts` to build the search index.',
   );
 }
 

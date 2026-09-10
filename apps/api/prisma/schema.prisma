@@ -37,26 +37,28 @@ enum Role {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
+  id              String     @id @default(uuid())
+  email           String     @unique
   emailVerifiedAt DateTime?
-  phone          String?
+  phone           String?
   phoneVerifiedAt DateTime?
-  passwordHash   String?
+  passwordHash    String?
   /// Institution this user belongs to. Null for students, guides and Modex
   /// staff. Every institution-scoped query is filtered on this, server-side.
-  organisationId String?
-  displayName    String
-  status         UserStatus @default(active)
-  mfaEnrolledAt  DateTime?
-  mfaSecretRef   String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  organisationId  String?
+  displayName     String
+  status          UserStatus @default(active)
+  mfaEnrolledAt   DateTime?
+  mfaSecretRef    String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  organisation Institution?   @relation(fields: [organisationId], references: [id], onDelete: Restrict)
-  roles        UserRoleGrant[]
-  sessions     Session[]
-  consents     ConsentGrant[]
+  organisation   Institution?    @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  roles          UserRoleGrant[]
+  sessions       Session[]
+  consents       ConsentGrant[]
+  studentProfile StudentProfile?
+  documents      Document[]
 
   @@index([organisationId])
   @@map("users")
@@ -69,14 +71,14 @@ enum UserStatus {
 }
 
 model UserRoleGrant {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
   role      Role
   /// Role grants are themselves scoped: a `university_staff` grant is only
   /// meaningful for one institution.
   scopeId   String?
   grantedBy String?
-  grantedAt DateTime @default(now())
+  grantedAt DateTime  @default(now())
   revokedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -87,20 +89,20 @@ model UserRoleGrant {
 }
 
 model Session {
-  id             String    @id @default(uuid())
-  userId         String
+  id               String    @id @default(uuid())
+  userId           String
   /// Hash of the refresh token. The token itself is never stored.
-  refreshTokenHash String  @unique
+  refreshTokenHash String    @unique
   /// Rotation chain: a reused parent is treated as theft and revokes the family.
-  parentId       String?
-  familyId       String
-  userAgent      String?
-  ipHash         String?
-  mfaSatisfied   Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  expiresAt      DateTime
-  revokedAt      DateTime?
-  lastUsedAt     DateTime?
+  parentId         String?
+  familyId         String
+  userAgent        String?
+  ipHash           String?
+  mfaSatisfied     Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  lastUsedAt       DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -117,14 +119,14 @@ enum ConsentScope {
 }
 
 model ConsentGrant {
-  id        String       @id @default(uuid())
-  userId    String
-  scope     ConsentScope
+  id            String       @id @default(uuid())
+  userId        String
+  scope         ConsentScope
   /// What the consent is scoped to — an institution, a guide, a document.
-  subjectId String?
-  grantedAt DateTime     @default(now())
-  expiresAt DateTime?
-  revokedAt DateTime?
+  subjectId     String?
+  grantedAt     DateTime     @default(now())
+  expiresAt     DateTime?
+  revokedAt     DateTime?
   /// Version of the wording the user actually agreed to.
   noticeVersion String
 
@@ -172,16 +174,16 @@ model AuditEvent {
 // ---------------------------------------------------------------------------
 
 model IdempotencyRecord {
-  key           String   @id
+  key            String           @id
   /// Route + actor, so one client's key cannot replay another's response.
-  scope         String
-  requestHash   String
+  scope          String
+  requestHash    String
   responseStatus Int?
-  responseBody  Json?
-  state         IdempotencyState @default(in_flight)
-  createdAt     DateTime @default(now())
-  completedAt   DateTime?
-  expiresAt     DateTime
+  responseBody   Json?
+  state          IdempotencyState @default(in_flight)
+  createdAt      DateTime         @default(now())
+  completedAt    DateTime?
+  expiresAt      DateTime
 
   @@index([expiresAt])
   @@map("idempotency_records")
@@ -214,29 +216,30 @@ enum VerificationStage {
 }
 
 model Institution {
-  id                String            @id @default(uuid())
+  id                String             @id @default(uuid())
   legalName         String
   displayName       String
   /// Official domains. Domain confirmation binds the institution to one of these.
   domains           String[]
-  country           String            @db.Char(2)
-  verificationState VerificationState @default(unverified)
+  country           String             @db.Char(2)
+  verificationState VerificationState  @default(unverified)
   verificationStage VerificationStage?
   brandColor        String?
   websiteUrl        String?
   description       String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
-  partnerships   InstitutionPartnership[]
-  campuses       Campus[]
-  contacts       InstitutionContact[]
-  programs       Program[]
-  domainChallenges DomainChallenge[]
-  evidence       VerificationEvidence[]
-  staff          User[]
-  syncRuns       SyncRun[]
-  imports        CatalogueImport[]
+  partnerships         InstitutionPartnership[]
+  campuses             Campus[]
+  contacts             InstitutionContact[]
+  programs             Program[]
+  domainChallenges     DomainChallenge[]
+  evidence             VerificationEvidence[]
+  staff                User[]
+  syncRuns             SyncRun[]
+  imports              CatalogueImport[]
+  eligibilityOverrides EligibilityOverride[]
 
   @@index([country])
   @@index([verificationState])
@@ -307,16 +310,16 @@ enum ContactRole {
 }
 
 model InstitutionContact {
-  id                   String      @id @default(uuid())
-  institutionId        String
-  fullName             String
-  email                String
-  role                 ContactRole
-  isAuthorisedSignatory Boolean    @default(false)
-  verifiedAt           DateTime?
+  id                    String      @id @default(uuid())
+  institutionId         String
+  fullName              String
+  email                 String
+  role                  ContactRole
+  isAuthorisedSignatory Boolean     @default(false)
+  verifiedAt            DateTime?
   /// Single-use token hash for the on-domain confirmation email.
-  challengeTokenHash   String?
-  challengeExpiresAt   DateTime?
+  challengeTokenHash    String?
+  challengeExpiresAt    DateTime?
 
   institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
 
@@ -406,22 +409,22 @@ enum StudyMode {
 }
 
 model Program {
-  id            String        @id @default(uuid())
+  id             String        @id @default(uuid())
   /// Stable across every effective-dated version of the same programme.
-  programKey    String
-  institutionId String
-  campusId      String?
-  name          String
-  level         ProgramLevel
-  field         String
+  programKey     String
+  institutionId  String
+  campusId       String?
+  name           String
+  level          ProgramLevel
+  field          String
   durationMonths Int
-  studyMode     StudyMode     @default(full_time)
-  description   String?
-  status        ProgramStatus @default(draft)
-  version       Int           @default(1)
-  effectiveFrom DateTime      @default(now())
+  studyMode      StudyMode     @default(full_time)
+  description    String?
+  status         ProgramStatus @default(draft)
+  version        Int           @default(1)
+  effectiveFrom  DateTime      @default(now())
   /// Null means "current". A closed version is immutable history.
-  effectiveTo   DateTime?
+  effectiveTo    DateTime?
 
   // Provenance (Phase 1 §3) — on every catalogue record, without exception.
   sourceUpdatedAt DateTime?
@@ -493,22 +496,23 @@ enum RuleType {
 }
 
 model Requirement {
-  id        String   @id @default(uuid())
-  programId String
-  intakeId  String?
-  ruleType  RuleType
+  id           String   @id @default(uuid())
+  programId    String
+  intakeId     String?
+  ruleType     RuleType
   /// Machine-readable rule. Validated against the contract's discriminated
   /// union before write — an unparseable rule is rejected, never stored.
-  ruleJson  Json
+  ruleJson     Json
   /// The sentence a student actually reads. Mandatory: a rule with no summary
   /// is a rule nobody can contest.
   humanSummary String
-  sourceRef String
-  version   Int      @default(1)
-  createdAt DateTime @default(now())
+  sourceRef    String
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
 
-  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
-  intake  Intake? @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+  program   Program               @relation(fields: [programId], references: [id], onDelete: Cascade)
+  intake    Intake?               @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+  overrides EligibilityOverride[]
 
   @@index([programId])
   @@map("requirements")
@@ -517,15 +521,15 @@ model Requirement {
 /// Money is integer minor units + ISO 4217 (Phase 0 §3.5). There is no decimal
 /// column here on purpose.
 model ProgramFees {
-  id         String  @id @default(uuid())
-  programId  String
-  intakeId   String?
-  tuitionMinor       Int
-  tuitionCurrency    String @db.Char(3)
+  id                     String  @id @default(uuid())
+  programId              String
+  intakeId               String?
+  tuitionMinor           Int
+  tuitionCurrency        String  @db.Char(3)
   applicationFeeMinor    Int?
   applicationFeeCurrency String? @db.Char(3)
-  depositMinor       Int?
-  depositCurrency    String? @db.Char(3)
+  depositMinor           Int?
+  depositCurrency        String? @db.Char(3)
 
   sourceUpdatedAt DateTime?
   verifiedAt      DateTime?
@@ -553,17 +557,17 @@ enum SyncRunStatus {
 }
 
 model SyncRun {
-  id            String        @id @default(uuid())
-  institutionId String
-  trigger       String
-  status        SyncRunStatus @default(running)
-  startedAt     DateTime      @default(now())
-  finishedAt    DateTime?
-  recordsSeen   Int           @default(0)
-  recordsChanged Int          @default(0)
-  recordsFailed Int           @default(0)
-  error         String?
-  correlationId String
+  id             String        @id @default(uuid())
+  institutionId  String
+  trigger        String
+  status         SyncRunStatus @default(running)
+  startedAt      DateTime      @default(now())
+  finishedAt     DateTime?
+  recordsSeen    Int           @default(0)
+  recordsChanged Int           @default(0)
+  recordsFailed  Int           @default(0)
+  error          String?
+  correlationId  String
 
   institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
 
@@ -599,4 +603,349 @@ model CatalogueImport {
 
   @@index([institutionId, state])
   @@map("catalogue_imports")
+}
+
+// ---------------------------------------------------------------------------
+// Student experience (Phase 2 #4)
+// ---------------------------------------------------------------------------
+
+enum GradeScale {
+  gpa_4
+  gpa_5
+  percentage
+  uk_class
+  ects_grade
+}
+
+enum AcademicLevel {
+  high_school
+  diploma
+  bachelors
+  masters
+  doctorate
+}
+
+enum LanguageTestName {
+  ielts
+  toefl_ibt
+  pte
+  duolingo
+  cambridge
+  moi_waiver
+}
+
+/// The student's reusable profile (Phase 2 §1).
+///
+/// Deliberately a separate table from `User`. Identity carries credentials and
+/// is never shared; a profile carries academic history and test scores and is
+/// shared with a university under an explicit `document_share` /
+/// `university_submission` consent. Putting them in one row would make the
+/// distinction a matter of which columns a query happened to select.
+model StudentProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  dateOfBirth        DateTime? @db.Date
+  /// ISO 3166-1 alpha-2. Nationality restriction rules turn on this.
+  nationality        String?   @db.Char(2)
+  countryOfResidence String?   @db.Char(2)
+
+  intendedLevel      ProgramLevel?
+  intendedField      String?
+  preferredCountries String[]
+  /// Integer minor units + ISO 4217, like every other money column here.
+  budgetPerYearMinor Int?
+  budgetCurrency     String?       @db.Char(3)
+  /// Target intake as `YYYY-MM`, which is how intakes are actually discussed.
+  targetIntake       String?
+
+  workExperienceMonths Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  academicRecords AcademicRecord[]
+  languageTests   LanguageTest[]
+  savedSearches   SavedSearch[]
+  shortlists      Shortlist[]
+
+  @@map("student_profiles")
+}
+
+model AcademicRecord {
+  id        String @id @default(uuid())
+  profileId String
+
+  level           AcademicLevel
+  institutionName String
+  countryCode     String        @db.Char(2)
+  fieldOfStudy    String
+  gradeScale      GradeScale?
+  /// Position on `gradeScale`. Meaningless without it, so the two move together.
+  gradeValue      Float?
+  startedAt       DateTime
+  /// Null means in progress. An unfinished degree is not a missing one.
+  completedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  profile StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("academic_records")
+}
+
+model LanguageTest {
+  id        String @id @default(uuid())
+  profileId String
+
+  test      LanguageTestName
+  overall   Float
+  /// Per-band scores keyed as the test publishes them. A 6.5 overall with a 5.0
+  /// in writing usually still fails, so the bands are not optional detail.
+  bands     Json             @default("{}")
+  takenAt   DateTime
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  profile StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([expiresAt])
+  @@map("language_tests")
+}
+
+// ---------------------------------------------------------------------------
+// Document vault (Phase 2 §2)
+// ---------------------------------------------------------------------------
+
+enum DocumentType {
+  passport
+  transcript
+  degree_certificate
+  language_test
+  personal_statement
+  reference_letter
+  cv
+  financial_evidence
+  portfolio
+  other
+}
+
+enum ScanState {
+  pending
+  clean
+  quarantined
+  failed
+}
+
+model Document {
+  id          String       @id @default(uuid())
+  ownerId     String
+  type        DocumentType
+  /// What the student called it. Never used as an object key.
+  displayName String
+
+  /// The version the vault shows. Prior versions stay readable — an application
+  /// snapshot references an exact `DocumentVersion`, and that reference has to
+  /// keep resolving after the student uploads a better scan.
+  currentVersionId String? @unique
+
+  expiryAt  DateTime?
+  /// Soft delete. Retention rules decide when the object itself goes, and a
+  /// hard delete would break snapshots that reference a version.
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner    User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  versions DocumentVersion[] @relation("DocumentVersions")
+
+  @@index([ownerId, type])
+  @@index([expiryAt])
+  @@map("documents")
+}
+
+/// **Versions are never overwritten.** There is no update path to `objectKey`;
+/// replacing a file writes a new row with the next `version`.
+model DocumentVersion {
+  id         String @id @default(uuid())
+  documentId String
+  version    Int
+
+  /// Opaque storage key. Carries no filename: a bucket listing must not reveal
+  /// who applied where.
+  objectKey   String
+  /// SHA-256 of the bytes actually stored. Null until the upload settles.
+  checksum    String?
+  sizeBytes   Int?
+  contentType String?
+
+  scanState      ScanState @default(pending)
+  scannedAt      DateTime?
+  scanDetail     String?
+  /// False until the checksum matches. A row whose bytes never landed must not
+  /// be one scanner bug away from looking acceptable.
+  uploadComplete Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+
+  document Document @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, version])
+  @@index([scanState])
+  @@map("document_versions")
+}
+
+// ---------------------------------------------------------------------------
+// Search, shortlist and compare (Phase 2 §3)
+// ---------------------------------------------------------------------------
+
+/// Denormalised search document, generated from the authoritative catalogue
+/// tables (Phase 2 §3).
+///
+/// Rebuilt wholesale per `programKey`, never edited field by field: a partial
+/// update is how an index drifts from its source, and this row is what the
+/// public sees. `visible` is computed from `publicVisibility(syncState,
+/// staleFields)` at build time, so a programme the freshness sweeper pulled
+/// cannot be surfaced by a query that forgot to filter.
+model ProgramSearchDocument {
+  programKey String @id
+  programId  String
+  version    Int
+
+  name        String
+  description String?
+  level       ProgramLevel
+  discipline  String
+  language    String       @default("English")
+
+  institutionId       String
+  institutionName     String
+  institutionVerified Boolean @default(false)
+  country             String  @db.Char(2)
+  city                String?
+
+  durationMonths      Int
+  tuitionMinor        Int?
+  tuitionCurrency     String? @db.Char(3)
+  applicationFeeMinor Int?
+
+  /// `YYYY-MM` for every open intake, so an intake facet is one array contains.
+  intakes      String[]
+  nextDeadline DateTime?
+
+  scholarshipAvailable Boolean @default(false)
+  discountAvailable    Boolean @default(false)
+  /// Commercial placement. Never bypasses a hard eligibility rule; see
+  /// `apps/api/src/search/ranking.ts`.
+  sponsored            Boolean @default(false)
+
+  visible     Boolean   @default(false)
+  staleFields String[]
+  syncState   SyncState @default(pending_review)
+
+  /// Concatenation of the searchable text, maintained by the indexer so the
+  /// trigram index has a single column to sit on.
+  searchText String
+
+  indexedAt DateTime @default(now())
+
+  @@index([visible, level])
+  @@index([visible, country])
+  @@index([visible, institutionId])
+  @@index([visible, tuitionMinor])
+  @@index([visible, nextDeadline])
+  @@map("program_search_documents")
+}
+
+model SavedSearch {
+  id        String @id @default(uuid())
+  profileId String
+  name      String
+  /// The parsed `ProgramSearchQuery`, stored as given so a saved search keeps
+  /// meaning what it meant when a facet is added later.
+  query     Json
+
+  createdAt DateTime @default(now())
+
+  profile StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("saved_searches")
+}
+
+model Shortlist {
+  id        String @id @default(uuid())
+  profileId String
+  name      String @default("My shortlist")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile StudentProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  items   ShortlistItem[]
+
+  @@index([profileId])
+  @@map("shortlists")
+}
+
+model ShortlistItem {
+  id          String  @id @default(uuid())
+  shortlistId String
+  /// The stable key, not a version id: a shortlist should survive the
+  /// university editing the description.
+  programKey  String
+  note        String?
+
+  addedAt DateTime @default(now())
+
+  shortlist Shortlist @relation(fields: [shortlistId], references: [id], onDelete: Cascade)
+
+  @@unique([shortlistId, programKey])
+  @@index([shortlistId])
+  @@map("shortlist_items")
+}
+
+// ---------------------------------------------------------------------------
+// Eligibility overrides (Phase 2 §4)
+// ---------------------------------------------------------------------------
+
+/// A university partner's correction to a rule the engine reads (Phase 2 §4).
+///
+/// Written by the admin tooling in #8; Phase 2 only reads them. Every
+/// application of one writes an audit event, because an override is the one
+/// place a human changes what a student is told about their own eligibility.
+model EligibilityOverride {
+  id            String @id @default(uuid())
+  requirementId String
+  institutionId String
+
+  /// Forced outcome for this requirement, whatever the rule evaluates to.
+  outcome CheckOutcome
+  /// Shown to the student in place of the engine's own reason. Mandatory: an
+  /// override nobody can read is an override nobody can contest.
+  reason  String
+
+  createdBy String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  revokedAt DateTime?
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([requirementId])
+  @@index([institutionId])
+  @@map("eligibility_overrides")
+}
+
+enum CheckOutcome {
+  pass
+  fail
+  unknown
+  missing_data
 }

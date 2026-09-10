@@ -76,6 +76,15 @@ jobs:
   security:
     name: Security gates
     runs-on: ubuntu-latest
+    # CodeQL analysed every file happily and then failed on the upload, because
+    # without an explicit block the job inherits whatever the repository's
+    # default token permissions happen to be — which differ between a pull
+    # request and a push, so the same commit passed on #11 and failed on main.
+    # Stated here, the job behaves the same way wherever it runs.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -146,6 +155,42 @@ jobs:
 
       - name: Seed runs against a real schema
         run: pnpm --filter @modex/api seed
+
+  performance:
+    name: Search latency budget
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: modex
+          POSTGRES_PASSWORD: modex
+          POSTGRES_DB: modex_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U modex"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://modex:modex@localhost:5432/modex_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @modex/api prisma:generate
+      - run: pnpm --filter @modex/api prisma:migrate
+
+      # Phase 2 (#4) sets p95 < 500 ms for common catalogue queries and requires
+      # the test in CI. The job prints the measured percentiles, so a run that
+      # passes at 480 ms is visible before it becomes a run that fails.
+      - run: pnpm --filter @modex/api test:performance
 
   build:
     name: Build

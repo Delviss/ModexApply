@@ -8,6 +8,11 @@ import { QueueModule } from './queue/queue.module.js';
 import { InstitutionsModule } from './institutions/institutions.module.js';
 import { CatalogueModule } from './catalogue/catalogue.module.js';
 import { IngestionModule } from './ingestion/ingestion.module.js';
+import { SearchModule } from './search/search.module.js';
+import { EligibilityModule } from './eligibility/eligibility.module.js';
+import { DocumentsModule } from './documents/documents.module.js';
+import { StudentsModule } from './students/students.module.js';
+import { WorkersModule } from './workers/workers.module.js';
 import { HealthModule } from './health/health.module.js';
 import { AllExceptionsFilter } from './common/errors/exception.filter.js';
 import { CorrelationMiddleware } from './common/http/correlation.middleware.js';
@@ -29,6 +34,11 @@ import { loadEnv } from './config/env.js';
     InstitutionsModule,
     CatalogueModule,
     IngestionModule,
+    SearchModule,
+    EligibilityModule,
+    DocumentsModule,
+    StudentsModule,
+    WorkersModule,
     HealthModule,
   ],
   providers: [

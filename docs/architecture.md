@@ -104,10 +104,57 @@ choice stays out of the call sites (issue #1 §7 lists cloud region and provider
 as still-open decisions). Golden signals per service; correlation IDs thread user
 action → API request → background job → connector call.
 
+## Search
+
+A `SearchIndex` port with a PostgreSQL adapter behind it. The TRD names
+OpenSearch; the port is what makes that a deployment decision rather than a
+rewrite, and a shared contract-test suite says what any adapter has to do.
+
+Two properties are enforced rather than intended:
+
+- **The index cannot surface a hidden programme.** `visible` is computed from
+  `publicVisibility` when the document is built, not at query time, so a query
+  that forgets to filter still finds nothing. Reindexing is enqueued from every
+  catalogue mutation *and* from both freshness sweep and confirmation — the two
+  places visibility changes with no user request behind it.
+- **Sponsorship cannot buy a rank.** It is a tie-break capped below the smallest
+  substantive weight, applied after them, so it can only order rows already
+  equal on merit. Eligibility is a different subsystem and ranking never sees
+  it, which is what makes "sponsored placement can never bypass a hard rule"
+  structural rather than a policy someone has to remember.
+
+## Eligibility
+
+A separate module from ranking, deliberately: "may I apply?" and "what should I
+look at first?" are different questions, and fusing them is how a platform ends
+up hiding programmes a student was eligible for.
+
+The engine returns an explanation, never a boolean, and three invariants hold
+across all nine rule evaluators: an unparseable rule is `unknown` and never a
+pass, missing data is `missing_data` with a remedy naming the next action, and
+nothing throws — one evaluator failing must not cost the student the other rows.
+Grade conversion refuses rather than interpolating, because a conversion nobody
+published is a judgement nobody can contest.
+
+## The document vault
+
+The order is the security property: the version row is written **before** the
+upload, so an interrupted upload leaves a record rather than an orphan object;
+the checksum is verified before the scan is queued, so the scanner sees the
+bytes that were actually stored; and `isConnectorEligible` — the one predicate
+naming the single state that passes — is enforced in the service method the
+connector calls, not in a controller or the UI, because a connector goes through
+neither.
+
+Scanning is a port. The default with nothing configured is `NoScanner`, which
+reports `pending` forever: an unconfigured deployment holds every document
+rather than sending unscanned ones.
+
 ## What is deliberately not here
 
-- Catalogue search and the eligibility engine — Phase 2 (#4). The contracts and
-  the `<EligibilityExplanation>` component that render its output exist.
 - Guide messaging and scheduling — Phase 3 (#5).
 - The connector adapter implementations — Phase 4 (#6). The idempotency,
-  snapshot and audit spine they need is built.
+  snapshot and audit spine they need is built, and
+  `DocumentsService.resolveForConnector` is the boundary they must call.
+- A scheduler. The freshness sweep and the document-expiry reminders both need
+  one; the queues and workers exist, nothing fires them periodically yet.

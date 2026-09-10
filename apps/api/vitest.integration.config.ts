@@ -18,6 +18,10 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['test/integration/**/*.test.ts'],
+    // The latency suite has its own config and its own CI job: a p95 breach and
+    // a broken cascade are different problems, and a shared red cross makes
+    // them look like the same one.
+    exclude: ['test/integration/search-latency.test.ts'],
     testTimeout: 60_000,
     hookTimeout: 120_000,
     fileParallelism: false,
