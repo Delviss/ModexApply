@@ -1,0 +1,50 @@
+# Publishes the delivery board at https://delviss.github.io/ModexApply/
+#
+# The board is static by necessity, not by preference: the Next.js app is
+# server-rendered — `cookies()`, `redirect()`, server-side authenticated fetches
+# and `async headers()` — and needs the API, PostgreSQL, Redis and object storage
+# behind it. Pages serves files. A hosted app is Phase 7 (#9) work.
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Stated rather than inherited. An unstated block is what made the identical
+# commit pass Security gates on a pull request and fail it on a push to main
+# (fixed in d4e85e8); the deploy needs `pages` and `id-token` and nothing else.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and never cancel one midway: a half-finished deploy
+# would leave the site serving a mix of two builds.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy the delivery board
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # No build step on purpose. The page is hand-written HTML with its assets
+      # beside it, so what is reviewed in the diff is exactly what is served.
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
