@@ -22,11 +22,13 @@ import { ConnectorsModule } from './connectors/connectors.module.js';
 import { OffersModule } from './offers/offers.module.js';
 import { WorkersModule } from './workers/workers.module.js';
 import { HealthModule } from './health/health.module.js';
+import { AdminModule } from './admin/admin.module.js';
 import { AllExceptionsFilter } from './common/errors/exception.filter.js';
 import { CorrelationMiddleware } from './common/http/correlation.middleware.js';
 import { MetricsInterceptor } from './common/http/metrics.interceptor.js';
 import { AuthGuard } from './auth/guards/auth.guard.js';
 import { PermissionsGuard } from './auth/guards/permissions.guard.js';
+import { StepUpGuard } from './auth/guards/step-up.guard.js';
 import { ConsentGuard } from './auth/guards/consent.guard.js';
 import { IdempotencyService } from './common/idempotency/idempotency.service.js';
 import { FeatureFlagService } from './config/feature-flags.js';
@@ -54,6 +56,7 @@ import { loadEnv } from './config/env.js';
     ApplicationsModule,
     ConnectorsModule,
     OffersModule,
+    AdminModule,
     WorkersModule,
     HealthModule,
   ],
@@ -62,10 +65,12 @@ import { loadEnv } from './config/env.js';
     { provide: FeatureFlagService, useFactory: () => new FeatureFlagService(loadEnv().FEATURE_FLAGS) },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
-    // Guard order matters: authenticate, then check RBAC, then check consent.
-    // Registering them globally makes "denied unless marked public" the default.
+    // Guard order matters: authenticate, check RBAC, check the elevated window,
+    // then check consent. Registering them globally makes "denied unless marked
+    // public" the default.
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_GUARD, useClass: StepUpGuard },
     { provide: APP_GUARD, useClass: ConsentGuard },
   ],
   exports: [IdempotencyService, FeatureFlagService],

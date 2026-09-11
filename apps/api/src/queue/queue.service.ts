@@ -34,6 +34,10 @@ export const QUEUES = {
   // description.
   offerExpiry: 'offer-expiry',
   notifications: 'notifications',
+  // Phase 6. Support impersonation expires on its own clock, and the sweep is
+  // what turns an expiry into an explicit end event rather than a grant that
+  // simply stops working and stays open-looking in the console.
+  impersonationSweep: 'impersonation-sweep',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];

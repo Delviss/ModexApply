@@ -103,6 +103,10 @@ model Session {
   userAgent        String?
   ipHash           String?
   mfaSatisfied     Boolean   @default(false)
+  /// Last time this session cleared a step-up challenge (Phase 6 §2). Freshness
+  /// is compared against a clock, never treated as a flag — see
+  /// `isStepUpFresh`. Null means the session has never stepped up.
+  stepUpAt         DateTime?
   createdAt        DateTime  @default(now())
   expiresAt        DateTime
   revokedAt        DateTime?
@@ -120,6 +124,7 @@ enum ConsentScope {
   document_share
   university_submission
   marketing_contact
+  support_access
 }
 
 model ConsentGrant {
@@ -1452,6 +1457,7 @@ model GuideRewardEntry {
 
   guide   StudentGuide  @relation(fields: [guideId], references: [id], onDelete: Cascade)
   session GuideSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  payouts Payout[]
 
   @@index([guideId, state])
   @@map("guide_reward_entries")
@@ -2115,4 +2121,310 @@ model AdmissionOffer {
 
   @@index([respondByAt])
   @@map("admission_offers")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — the admin consoles (#8)
+// ---------------------------------------------------------------------------
+
+enum SanctionKind {
+  warn
+  restrict
+  suspend
+  ban
+}
+
+enum SanctionTargetType {
+  guide
+  user
+  offer
+  institution
+}
+
+enum SanctionReasonCode {
+  payment_solicitation
+  guarantee_claim
+  impersonation
+  off_platform_contact
+  spam
+  harassment
+  identity_unverified
+  identity_drift
+  fraudulent_offer
+  false_institution_claim
+  repeat_violation
+  other
+}
+
+/// A sanction issued from the trust console.
+///
+/// `targetId` is a plain column rather than a foreign key, for the same reason
+/// `MessageFlag` uses one: the record of a ban must outlive the row it was
+/// issued against, and a cascade would let an erasure request quietly delete
+/// the history of why somebody was removed.
+///
+/// Reversal is a write to `reversedAt`, never a delete. Both the sanction and
+/// its reversal produce audit events, so "was this person ever banned" stays
+/// answerable after the ban is lifted.
+model Sanction {
+  id            String             @id @default(uuid())
+  targetType    SanctionTargetType
+  targetId      String
+  kind          SanctionKind
+  reasonCode    SanctionReasonCode
+  /// The sentence a human wrote. The code is for counting; this is for appeals.
+  reason        String
+  /// The trust case this came out of, when there is one.
+  caseId        String?
+  actorId       String
+  correlationId String
+  appliedAt     DateTime           @default(now())
+  /// Null is permanent. Only `warn` and `restrict` are expected to carry one.
+  expiresAt     DateTime?
+
+  reversedAt     DateTime?
+  reversedBy     String?
+  reversalReason String?
+
+  @@index([targetType, targetId])
+  @@index([kind, appliedAt])
+  @@index([caseId])
+  @@map("sanctions")
+}
+
+/// Support impersonation (Phase 6 §3): controlled, time-boxed, consented, and
+/// always audited.
+///
+/// The subject can read their own grants — that is what makes "the student sees
+/// that it happened" true in the data rather than in a policy document.
+model ImpersonationGrant {
+  id            String    @id @default(uuid())
+  operatorId    String
+  subjectId     String
+  /// Why, in the operator's words. Copied verbatim into the audit event.
+  reason        String
+  /// The support ticket or trust case this is being done for.
+  reference     String
+  correlationId String
+  startedAt     DateTime  @default(now())
+  expiresAt     DateTime
+  /// Set when the operator ends it early, or when the sweeper closes an expired
+  /// one. An open grant past `expiresAt` grants nothing either way.
+  endedAt       DateTime?
+  endedReason   String?
+
+  @@index([subjectId, startedAt])
+  @@index([operatorId, startedAt])
+  @@index([expiresAt])
+  @@map("impersonation_grants")
+}
+
+enum RequirementDecision {
+  approved
+  overridden
+  annotated
+}
+
+/// A university's review of a machine rule the eligibility engine produced.
+///
+/// Every row carries before and after values: an override with no `before` is
+/// an assertion, and an assertion cannot be audited. The prior requirement
+/// version is copied in rather than referenced, because requirements are
+/// effective-dated and the row this review looked at will be superseded.
+///
+/// `requirementId` is a plain column rather than a foreign key, for the same
+/// reason `MessageFlag` uses one: **the record of a decision outlives the row it
+/// was made about.** A requirement superseded, or a programme withdrawn, must
+/// not be able to take the record of who overrode what with it — and a foreign
+/// key would do exactly that, since a cascade deletes the evidence and a
+/// restrict makes the append-only table impossible to clean up around.
+model RequirementReview {
+  id                 String              @id @default(uuid())
+  requirementId      String
+  institutionId      String
+  decision           RequirementDecision
+  reason             String
+  beforeRuleJson     Json
+  beforeHumanSummary String
+  afterRuleJson      Json?
+  afterHumanSummary  String?
+  actorId            String
+  correlationId      String
+  createdAt          DateTime            @default(now())
+
+  @@index([requirementId, createdAt])
+  @@index([institutionId, createdAt])
+  @@map("requirement_reviews")
+}
+
+enum NotificationChannel {
+  email
+  sms
+  in_app
+}
+
+enum NotificationDeliveryState {
+  queued
+  sent
+  delivered
+  bounced
+  failed
+  suppressed
+}
+
+/// Operator-editable message templates.
+///
+/// Editing one is versioned rather than overwritten: a student who asks "what
+/// did that email say" months later is asking about the version they received,
+/// not the one being sent today.
+model NotificationTemplate {
+  id        String              @id @default(uuid())
+  key       String
+  channel   NotificationChannel
+  locale    String              @default("en")
+  subject   String?
+  body      String
+  version   Int                 @default(1)
+  active    Boolean             @default(true)
+  updatedBy String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  deliveries NotificationDelivery[]
+
+  @@unique([key, channel, locale, version])
+  @@index([key, active])
+  @@map("notification_templates")
+}
+
+model NotificationDelivery {
+  id            String                    @id @default(uuid())
+  templateId    String?
+  templateKey   String
+  channel       NotificationChannel
+  /// Who it went to, by id. Never the address itself — an address in a
+  /// monitoring table is PII sitting somewhere nobody thinks of as a store.
+  recipientId   String
+  state         NotificationDeliveryState @default(queued)
+  failureReason String?
+  correlationId String
+  queuedAt      DateTime                  @default(now())
+  sentAt        DateTime?
+  settledAt     DateTime?
+
+  template NotificationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([templateKey, state])
+  @@index([recipientId, queuedAt])
+  @@map("notification_deliveries")
+}
+
+enum TransactionKind {
+  service_payment
+  service_refund
+  guide_payout
+}
+
+enum TransactionState {
+  pending
+  settled
+  failed
+  reversed
+}
+
+/// Modex's own money only (TRD §15).
+///
+/// Tuition is never collected here. A tuition payment appears, if at all, as a
+/// reference a student recorded — and there is deliberately no column on this
+/// table it could be written into.
+model ModexTransaction {
+  id            String           @id @default(uuid())
+  kind          TransactionKind
+  state         TransactionState @default(pending)
+  amountMinor   Int
+  currency      String           @db.Char(3)
+  /// The payment processor's reference. Not a card, not an account number.
+  externalRef   String?
+  /// Who the money moved for. A student for a service payment, a guide for a payout.
+  subjectUserId String?
+  description   String
+  correlationId String
+  createdAt     DateTime         @default(now())
+  settledAt     DateTime?
+
+  refunds Refund[]
+  payout  Payout?
+
+  @@index([kind, state])
+  @@index([subjectUserId, createdAt])
+  @@map("modex_transactions")
+}
+
+enum RefundReasonCode {
+  duplicate_charge
+  service_not_delivered
+  student_withdrew
+  pricing_error
+  goodwill
+  chargeback
+}
+
+/// Refunds run against a Modex service payment and nothing else. The foreign
+/// key is what enforces it: there is no row here that can point at tuition.
+model Refund {
+  id            String           @id @default(uuid())
+  transactionId String
+  amountMinor   Int
+  currency      String           @db.Char(3)
+  reasonCode    RefundReasonCode
+  reason        String
+  actorId       String
+  correlationId String
+  createdAt     DateTime         @default(now())
+
+  transaction ModexTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  @@index([transactionId])
+  @@map("refunds")
+}
+
+enum PayoutState {
+  pending_approval
+  approved
+  rejected
+  paid
+}
+
+/// A guide payout, with the two-actor rule in the columns.
+///
+/// `initiatedBy` and `approvedBy` are separate columns so the constraint is
+/// checkable after the fact, by anyone reading the table, without replaying the
+/// application's logic. `GuideRewardEntry` is the ledger; this is the movement.
+///
+/// Note what is still absent: no application id, no admission outcome, nothing
+/// to join a payment to whether the student got in (Phase 3 §5).
+model Payout {
+  id            String      @id @default(uuid())
+  rewardEntryId String      @unique
+  guideId       String
+  amountMinor   Int
+  currency      String      @db.Char(3)
+  state         PayoutState @default(pending_approval)
+  initiatedBy   String
+  initiatedAt   DateTime    @default(now())
+  approvedBy    String?
+  approvedAt    DateTime?
+  rejectedBy    String?
+  rejectedAt    DateTime?
+  decisionNote  String?
+  paidAt        DateTime?
+  transactionId String?     @unique
+  correlationId String
+
+  rewardEntry GuideRewardEntry  @relation(fields: [rewardEntryId], references: [id], onDelete: Restrict)
+  transaction ModexTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([state, initiatedAt])
+  @@index([guideId])
+  @@map("payouts")
 }

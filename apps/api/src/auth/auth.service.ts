@@ -3,13 +3,16 @@ import * as argon2 from 'argon2';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   requiresMfa,
+  stepUpExpiresAt,
   type ConsentScope,
   type Role,
+  type StepUpAction,
 } from '@modex/contracts';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService, type AuditActor } from '../audit/audit.service.js';
 import { AppError } from '../common/errors/app-error.js';
 import { TokenService } from './token.service.js';
+import { MfaService } from './mfa.service.js';
 
 export interface Credentials {
   email: string;
@@ -45,6 +48,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly tokens: TokenService,
     private readonly audit: AuditService,
+    private readonly mfa: MfaService,
   ) {}
 
   async register(input: {
@@ -294,6 +298,182 @@ export class AuthService {
       objectId: `${userId}:${scope}`,
       metadata: { scope },
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // Multi-factor authentication and step-up (Phase 0 §3.2, Phase 6 §2)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Starts enrolment. Returns the secret once, for the authenticator app; it is
+   * sealed in the same call and never returned again.
+   *
+   * Enrolment is not complete until a code is confirmed — an account marked
+   * enrolled against a secret nobody scanned is an account locked out of itself.
+   */
+  async beginMfaEnrolment(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, mfaEnrolledAt: true },
+    });
+    if (user === null) throw AppError.notFound('Account');
+    if (user.mfaEnrolledAt !== null) {
+      throw new AppError(
+        'conflict',
+        'This account already has an authenticator enrolled. Remove it before enrolling another.',
+      );
+    }
+
+    const enrolment = this.mfa.enrol(user.email);
+    // Stored before confirmation, but `mfaEnrolledAt` stays null, so the secret
+    // exists and grants nothing until a code proves the app holds it too.
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { mfaSecretRef: enrolment.sealed },
+    });
+
+    return { secret: enrolment.secret, otpauthUrl: enrolment.otpauthUrl };
+  }
+
+  /** Confirms enrolment with the first code the app produces. */
+  async confirmMfaEnrolment(actor: AuditActor, userId: string, code: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { mfaSecretRef: true, mfaEnrolledAt: true },
+    });
+    if (user?.mfaSecretRef == null) {
+      throw new AppError('precondition_failed', 'Start enrolment before confirming a code.');
+    }
+    if (!this.mfa.verify(user.mfaSecretRef, code)) {
+      await this.audit.record({
+        actor,
+        action: 'user.mfa_challenge_failed',
+        objectType: 'user',
+        objectId: userId,
+        metadata: { stage: 'enrolment' },
+      });
+      throw new AppError('mfa_required', 'That code did not match. Try the next one.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { mfaEnrolledAt: new Date() },
+    });
+    await this.audit.record({
+      actor,
+      action: 'user.mfa_enrolled',
+      objectType: 'user',
+      objectId: userId,
+    });
+  }
+
+  /**
+   * The login challenge: upgrades a session from authenticated to MFA-satisfied.
+   *
+   * Until this succeeds the global guard rejects the session, so a staff login
+   * that stops halfway grants nothing at all.
+   */
+  async satisfyMfa(
+    actor: AuditActor,
+    input: { sessionId: string; userId: string; code: string },
+  ): Promise<{ accessToken: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: input.userId },
+      select: {
+        mfaSecretRef: true,
+        mfaEnrolledAt: true,
+        organisationId: true,
+        roles: { where: { revokedAt: null }, select: { role: true } },
+      },
+    });
+    if (user?.mfaSecretRef == null || user.mfaEnrolledAt === null) {
+      throw new AppError('precondition_failed', 'This account has no authenticator enrolled.');
+    }
+    if (!this.mfa.verify(user.mfaSecretRef, input.code)) {
+      await this.audit.record({
+        actor,
+        action: 'user.mfa_challenge_failed',
+        objectType: 'session',
+        objectId: input.sessionId,
+        metadata: { stage: 'login' },
+      });
+      throw new AppError('mfa_required', 'That code did not match.');
+    }
+
+    const session = await this.prisma.session.findFirst({
+      where: { id: input.sessionId, userId: input.userId, revokedAt: null },
+      select: { id: true },
+    });
+    if (session === null) throw new AppError('unauthenticated', 'This session is no longer valid.');
+
+    await this.prisma.session.update({
+      where: { id: session.id },
+      data: { mfaSatisfied: true },
+    });
+
+    // A new access token, because the old one carries `mfa: false` and the
+    // guard reads the *session* rather than the claim — but a client holding a
+    // token that says otherwise is a confusing client to debug.
+    const accessToken = await this.tokens.issueAccessToken({
+      sub: input.userId,
+      roles: user.roles.map((grant) => grant.role as Role),
+      organisationId: user.organisationId,
+      mfa: true,
+      sid: session.id,
+    });
+    return { accessToken };
+  }
+
+  /**
+   * Step-up (Phase 6 §2): the same factor, asked again, for entering a console
+   * or doing something inside it that cannot be undone.
+   *
+   * Stamps the session rather than the user: elevation belongs to the browser
+   * that answered the challenge, not to every session the person has open.
+   */
+  async stepUp(
+    actor: AuditActor,
+    input: { sessionId: string; userId: string; code: string; action: StepUpAction },
+  ): Promise<{ stepUpAt: string; expiresAt: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { mfaSecretRef: true, mfaEnrolledAt: true },
+    });
+    if (user?.mfaSecretRef == null || user.mfaEnrolledAt === null) {
+      throw new AppError(
+        'precondition_failed',
+        'This action needs an authenticator, and this account has none enrolled.',
+      );
+    }
+    if (!this.mfa.verify(user.mfaSecretRef, input.code)) {
+      await this.audit.record({
+        actor,
+        action: 'auth.step_up_failed',
+        objectType: 'session',
+        objectId: input.sessionId,
+        metadata: { stepUpAction: input.action },
+      });
+      throw new AppError('step_up_required', 'That code did not match.');
+    }
+
+    const stepUpAt = new Date();
+    const updated = await this.prisma.session.updateMany({
+      where: { id: input.sessionId, userId: input.userId, revokedAt: null },
+      data: { stepUpAt },
+    });
+    if (updated.count === 0) {
+      throw new AppError('unauthenticated', 'This session is no longer valid.');
+    }
+
+    await this.audit.record({
+      actor,
+      action: 'auth.step_up_succeeded',
+      objectType: 'session',
+      objectId: input.sessionId,
+      metadata: { stepUpAction: input.action },
+    });
+
+    return { stepUpAt: stepUpAt.toISOString(), expiresAt: stepUpExpiresAt(stepUpAt) };
   }
 
   private async issueSession(input: {

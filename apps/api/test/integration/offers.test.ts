@@ -91,6 +91,7 @@ async function student(email = 'ada@example.com', gpa = 3.8): Promise<AccessCont
     data: { email, displayName: 'Ada Bello', status: 'active' },
   });
   const access = buildAccessContext({
+    sessionId: 'session_test',
     userId: user.id,
     roles: ['student'],
     organisationId: null,

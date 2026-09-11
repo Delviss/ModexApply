@@ -15,6 +15,16 @@ const EnvSchema = z.object({
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().default(900),
   REFRESH_TOKEN_TTL_SECONDS: z.coerce.number().int().default(60 * 60 * 24 * 30),
 
+  /**
+   * Passphrase the per-user TOTP secrets are sealed with (Phase 6 §2).
+   *
+   * The sealed blob lives in `users.mfaSecretRef`; this key lives in the managed
+   * secret store, so a database backup on its own cannot mint codes. Rotating it
+   * invalidates every enrolment, which is why it is separate from
+   * `JWT_SIGNING_KEY` — those rotate on very different schedules.
+   */
+  MFA_SECRET_KEY: z.string().min(32),
+
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
   S3_ENDPOINT: z.string().default('http://localhost:9000'),

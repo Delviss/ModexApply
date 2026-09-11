@@ -111,6 +111,44 @@ export const AUDIT_ACTIONS = [
   'offer.attached',
   'offer.attachment_changed',
   'application.admission_offer_recorded',
+
+  // Phase 6 — the admin consoles (#8).
+  //
+  // `evidence.viewed` is the unusual one: reading is normally not an auditable
+  // event, and auditing every read would bury the writes. Verification evidence
+  // is the exception the issue names explicitly — "viewing it is itself an
+  // audited action" — because the harm from an unnecessary look at somebody's
+  // identity document happens at the moment of looking, with nothing left
+  // behind to find later.
+  'auth.step_up_succeeded',
+  'auth.step_up_failed',
+  'console.entered',
+  'evidence.viewed',
+  'sanction.applied',
+  'sanction.reversed',
+  'requirement.reviewed',
+  'impersonation.started',
+  'impersonation.ended',
+  'impersonation.expired',
+  'notification.template_updated',
+  'payout.initiated',
+  'payout.approved',
+  'payout.rejected',
+  'payout.paid',
+  'refund.issued',
+  'org_user.invited',
+  'org_user.role_changed',
+  'org_user.removed',
+  'connector.enabled',
+  'connector.disabled',
+  'connector.retried',
+
+  // Phase 7 — privacy workflows (#9).
+  'privacy.export_requested',
+  'privacy.export_completed',
+  'privacy.erasure_requested',
+  'privacy.erasure_completed',
+  'privacy.erasure_refused',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

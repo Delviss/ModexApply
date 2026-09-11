@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { requiresMfa } from '@modex/contracts';
 import { AppError } from '../../common/errors/app-error.js';
 import { currentContext } from '../../common/observability/request-context.js';
-import { PUBLIC_KEY } from '../decorators/access.decorators.js';
+import { PENDING_MFA_KEY, PUBLIC_KEY } from '../decorators/access.decorators.js';
 import type { AuthenticatedRequest } from '../decorators/actor.decorator.js';
 import { SessionResolver } from '../session-resolver.js';
 
@@ -39,8 +39,14 @@ export class AuthGuard implements CanActivate {
     const access = await this.sessions.resolve(token);
 
     // A staff session that has not cleared MFA is rejected outright rather than
-    // downgraded, so no endpoint has to remember to re-check.
-    if (requiresMfa(access.roles) && !access.mfaSatisfied) {
+    // downgraded, so no endpoint has to remember to re-check. The one exemption
+    // is the challenge route itself, which is how the session stops being
+    // un-satisfied.
+    const allowPendingMfa = this.reflector.getAllAndOverride<boolean>(PENDING_MFA_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (allowPendingMfa !== true && requiresMfa(access.roles) && !access.mfaSatisfied) {
       throw new AppError('mfa_required', 'This role requires multi-factor authentication.');
     }
 

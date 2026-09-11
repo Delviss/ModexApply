@@ -10,6 +10,12 @@ export interface AccessTokenClaims {
   organisationId: string | null;
   mfa: boolean;
   sid: string;
+  /**
+   * The operator acting as `sub`, for a support impersonation (Phase 6 §3).
+   * Named after the RFC 8693 `act` claim so the meaning is not ours to invent.
+   * Absent on every ordinary session.
+   */
+  act?: string | null;
 }
 
 /**
@@ -41,6 +47,7 @@ export class TokenService {
       organisationId: claims.organisationId,
       mfa: claims.mfa,
       sid: claims.sid,
+      ...(claims.act == null ? {} : { act: claims.act }),
     })
       .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .setSubject(claims.sub)
@@ -63,6 +70,7 @@ export class TokenService {
         organisationId: (payload.organisationId as string | null | undefined) ?? null,
         mfa: payload.mfa === true,
         sid: String(payload.sid),
+        act: (payload.act as string | undefined) ?? null,
       };
     } catch (error) {
       const expired =

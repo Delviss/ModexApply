@@ -24,7 +24,14 @@ export class SessionResolver {
 
     const session = await this.prisma.session.findUnique({
       where: { id: claims.sid },
-      select: { id: true, userId: true, revokedAt: true, expiresAt: true, mfaSatisfied: true },
+      select: {
+        id: true,
+        userId: true,
+        revokedAt: true,
+        expiresAt: true,
+        mfaSatisfied: true,
+        stepUpAt: true,
+      },
     });
     if (session === null || session.revokedAt !== null || session.expiresAt <= new Date()) {
       throw new AppError('unauthenticated', 'This session is no longer valid.');
@@ -52,8 +59,16 @@ export class SessionResolver {
       throw new AppError('unauthenticated', 'This account is not active.');
     }
 
+    // An impersonation session carries the operator in the token's `act` claim;
+    // the grant is re-read here rather than trusted from the token, so ending a
+    // grant early ends the access on the very next request.
+    const impersonatedBy = await this.activeImpersonator(claims, session.userId);
+
     return buildAccessContext({
       userId: user.id,
+      sessionId: session.id,
+      stepUpAt: session.stepUpAt,
+      impersonatedBy,
       roles: user.roles.map((grant) => grant.role as Role),
       organisationId: user.organisationId,
       mfaSatisfied: session.mfaSatisfied,
@@ -67,5 +82,33 @@ export class SessionResolver {
         }),
       ),
     });
+  }
+
+  /**
+   * Resolves the operator behind an impersonation session, or null.
+   *
+   * A token claiming an impersonation that has expired or been ended is not an
+   * error — it is simply no longer an impersonation, and the session it belongs
+   * to is rejected outright: continuing as the subject without the marker would
+   * be exactly the untraceable access the grant exists to prevent.
+   */
+  private async activeImpersonator(
+    claims: { act?: string | null },
+    subjectId: string,
+  ): Promise<string | null> {
+    if (claims.act == null) return null;
+    const grant = await this.prisma.impersonationGrant.findFirst({
+      where: {
+        operatorId: claims.act,
+        subjectId,
+        endedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: { operatorId: true },
+    });
+    if (grant === null) {
+      throw new AppError('unauthenticated', 'This support session has ended.');
+    }
+    return grant.operatorId;
   }
 }
