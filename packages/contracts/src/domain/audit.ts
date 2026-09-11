@@ -95,6 +95,22 @@ export const AUDIT_ACTIONS = [
   'connector.event_received',
   'connector.event_rejected',
   'connector.poll_completed',
+
+  // Phase 5 — offers. `offer.mismatch_detected` is deliberately its own action
+  // rather than a flavour of `offer.unpublished`: a displayed discount that
+  // differs from its source is a trust incident, and it has to be findable as
+  // one in the log without reading every unpublish reason.
+  'offer.created',
+  'offer.superseded',
+  'offer.verified',
+  'offer.published',
+  'offer.unpublished',
+  'offer.expired',
+  'offer.source_checked',
+  'offer.mismatch_detected',
+  'offer.attached',
+  'offer.attachment_changed',
+  'application.admission_offer_recorded',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

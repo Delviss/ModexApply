@@ -453,12 +453,184 @@ async function main(): Promise<void> {
     },
   });
 
+  // -------------------------------------------------------------------------
+  // Phase 5 — offers.
+  //
+  // Four, chosen to make every state of the price panel visible on a clean
+  // clone: one the seeded student qualifies for, one they do not (with the
+  // reason), one that cannot combine with the first, and one benefit that is
+  // deliberately worth nothing to the arithmetic.
+  // -------------------------------------------------------------------------
+  const verifiedBy = 'A. Okafor, Modex Trust';
+  const offerDefaults = {
+    institutionId: institution.id,
+    publicationState: 'published' as const,
+    verificationState: 'verified' as const,
+    verifiedBy,
+    verifiedAt: new Date(),
+    lastCheckedAt: new Date(),
+    validFrom: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    syncState: 'synced' as const,
+    reviewedBy: 'seed',
+    staleFields: [],
+  };
+
+  await prisma.offer.create({
+    data: {
+      ...offerDefaults,
+      offerKey: 'seed-international-merit-award',
+      programKey: dataScience.programKey,
+      type: 'scholarship',
+      name: 'International Merit Award',
+      valueKind: 'fixed_amount',
+      // Integer minor units: 5,000.00 GBP.
+      amountMinor: 500_000,
+      currency: 'GBP',
+      appliesTo: 'tuition',
+      duration: 'first_year',
+      conditions: [
+        {
+          id: 'seed-merit-gpa',
+          ruleType: 'gpa_minimum',
+          ruleJson: { ruleType: 'gpa_minimum', scale: 'gpa_4', comparison: 'gte', value: 3.2 },
+          humanSummary: 'A grade point average of 3.2 or above on a 4.0 scale.',
+          sourceRef: 'https://example.ac.uk/fees/international-merit-award',
+        },
+      ],
+      termsSummary:
+        'Awarded on academic merit to international fee-payers. Applies to the first year of tuition only.',
+      applicationMethod: 'No separate form — we attach it to your application when you qualify.',
+      claimDeadline: new Date('2027-05-31'),
+      validUntil: new Date('2027-06-30'),
+      sourceRef: 'https://example.ac.uk/fees/international-merit-award',
+      exclusions: {
+        create: [
+          {
+            kind: 'not_combinable_with_offer',
+            otherOfferKey: 'seed-early-payment-discount',
+            programKeys: [],
+            humanSummary: 'Not combinable with the early payment discount.',
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.offer.create({
+    data: {
+      ...offerDefaults,
+      offerKey: 'seed-early-payment-discount',
+      programKey: dataScience.programKey,
+      type: 'tuition_discount',
+      name: 'Early payment discount',
+      valueKind: 'percentage',
+      // 5%, in basis points. There is nowhere here to write "5%" as text.
+      basisPoints: 500,
+      appliesTo: 'tuition',
+      duration: 'first_year',
+      conditions: [
+        {
+          id: 'seed-early-payment-degree',
+          ruleType: 'academic_qualification',
+          ruleJson: { ruleType: 'academic_qualification', level: 'bachelors', countries: [] },
+          humanSummary: 'A completed bachelor degree.',
+          sourceRef: 'https://example.ac.uk/fees/early-payment',
+        },
+      ],
+      termsSummary: 'For students who pay the first year in full before enrolment.',
+      validUntil: new Date('2027-08-31'),
+      sourceRef: 'https://example.ac.uk/fees/early-payment',
+      exclusions: {
+        create: [
+          {
+            kind: 'requires_full_upfront_payment',
+            programKeys: [],
+            humanSummary: 'You must pay the whole first year before you enrol to keep this.',
+          },
+          {
+            kind: 'not_combinable_with_offer',
+            otherOfferKey: 'seed-international-merit-award',
+            programKeys: [],
+            humanSummary: 'Not combinable with the International Merit Award.',
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.offer.create({
+    data: {
+      ...offerDefaults,
+      offerKey: 'seed-south-asia-award',
+      programKey: null,
+      type: 'scholarship',
+      name: 'South Asia Regional Award',
+      valueKind: 'percentage',
+      basisPoints: 1500,
+      appliesTo: 'tuition',
+      duration: 'every_year',
+      conditions: [
+        {
+          id: 'seed-south-asia-nationality',
+          ruleType: 'nationality_restriction',
+          ruleJson: {
+            ruleType: 'nationality_restriction',
+            comparison: 'in',
+            countries: ['IN', 'PK', 'BD', 'LK', 'NP'],
+          },
+          humanSummary:
+            'Open to nationals of India, Pakistan, Bangladesh, Sri Lanka and Nepal.',
+          sourceRef: 'https://example.ac.uk/fees/south-asia-award',
+        },
+      ],
+      termsSummary: 'A regional award for students from South Asia, renewed each year on progression.',
+      applicationMethod: 'Apply on the university site by the deadline below.',
+      claimDeadline: new Date('2027-04-30'),
+      // Inside the 14-day warning window on a clean clone, so the amber
+      // treatment is visible without editing a date by hand.
+      validUntil: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      sourceRef: 'https://example.ac.uk/fees/south-asia-award',
+    },
+  });
+
+  await prisma.offer.create({
+    data: {
+      ...offerDefaults,
+      offerKey: 'seed-guaranteed-housing',
+      programKey: null,
+      type: 'student_benefit',
+      name: 'Guaranteed first-year housing',
+      valueKind: 'benefit_in_kind',
+      benefit: 'A guaranteed place in university halls for the first year',
+      provider: 'University of Example Accommodation Services',
+      // A benefit reduces no cost line, and contributes nothing to the net
+      // price. Giving it a notional cash value is the arithmetic Phase 5 exists
+      // to refuse.
+      appliesTo: 'none',
+      duration: 'first_year',
+      conditions: [
+        {
+          id: 'seed-housing-qualification',
+          ruleType: 'academic_qualification',
+          ruleJson: { ruleType: 'academic_qualification', level: 'bachelors', countries: [] },
+          humanSummary: 'A completed bachelor degree.',
+          sourceRef: 'https://example.ac.uk/accommodation/guarantee',
+        },
+      ],
+      termsSummary: 'Applies to applications made before the intake deadline.',
+      redemptionMethod: 'Accept your place, then apply for halls with the code we send you.',
+      validUntil: new Date('2027-07-31'),
+      sourceRef: 'https://example.ac.uk/accommodation/guarantee',
+    },
+  });
+
   console.warn(
     `Seeded: ${institution.displayName} (verified, 2 programmes), ` +
       'Northern Institute of Technology (mid-onboarding), and ' +
       `${student.displayName} (part-complete profile, one clean and one quarantined document), ` +
-      'plus three student guides (active, expiring, restricted), three session slots and ' +
-      'one published Q&A answer.',
+      'plus three student guides (active, expiring, restricted), three session slots, ' +
+      'one published Q&A answer, and four verified offers (one the student ' +
+      'qualifies for, one they do not, one non-combinable, one benefit in kind).',
   );
   console.warn(
     'Run `pnpm --filter @modex/api exec tsx prisma/reindex.ts` to build the search index.',

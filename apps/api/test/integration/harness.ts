@@ -23,6 +23,11 @@ import { SessionsService } from '../../src/sessions/sessions.service.js';
 import { QaService } from '../../src/qa/qa.service.js';
 import type { MalwareScanner, ScanVerdict } from '../../src/documents/scanner.port.js';
 import { ApplicationsService } from '../../src/applications/applications.service.js';
+import { OffersService } from '../../src/offers/offers.service.js';
+import { OfferPricingService } from '../../src/offers/offer-pricing.service.js';
+import { OfferExpiryService } from '../../src/offers/offer-expiry.service.js';
+import { OfferIntegrityService } from '../../src/offers/offer-integrity.service.js';
+import { OfferLifecycleService } from '../../src/offers/offer-lifecycle.service.js';
 import { ApplicationStateService } from '../../src/applications/application-state.service.js';
 import { PayloadBuilderService } from '../../src/applications/payload-builder.service.js';
 import { SubmissionService } from '../../src/applications/submission.service.js';
@@ -136,6 +141,11 @@ export interface Harness {
   inbound: InboundStatusService;
   poll: StatusPollService;
   secrets: SecretResolver;
+  offers: OffersService;
+  offerPricing: OfferPricingService;
+  offerExpiry: OfferExpiryService;
+  offerIntegrity: OfferIntegrityService;
+  offerLifecycle: OfferLifecycleService;
 }
 
 /**
@@ -277,7 +287,22 @@ export function createHarness(prisma: PrismaClient): Harness {
     storage,
   );
   const eligibility = new EligibilityService(prismaService, audit);
-  const inbound = new InboundStatusService(prismaService, audit, applicationState, secrets);
+
+  // Phase 5. `indexer` is built here rather than reused from the object literal
+  // below because the expiry sweep needs it before that literal exists — a
+  // lapsed offer has to leave the search index in the same cycle it leaves the
+  // catalogue, and the sweep is what does that.
+  const indexer = new IndexerService(prismaService, index);
+  const offers = new OffersService(prismaService, audit, queue as unknown as QueueService);
+  const offerPricing = new OfferPricingService(prismaService, eligibility);
+  const offerLifecycle = new OfferLifecycleService(prismaService, audit, offerPricing);
+  const inbound = new InboundStatusService(
+    prismaService,
+    audit,
+    applicationState,
+    offerLifecycle,
+    secrets,
+  );
 
   return {
     prisma,
@@ -298,7 +323,7 @@ export function createHarness(prisma: PrismaClient): Harness {
     students: new StudentsService(prismaService, audit),
     documents,
     search: new SearchService(prismaService, index),
-    indexer: new IndexerService(prismaService, index),
+    indexer,
     index,
     storage,
     scanner,
@@ -322,6 +347,23 @@ export function createHarness(prisma: PrismaClient): Harness {
     inbound,
     poll: new StatusPollService(prismaService, audit, registry, inbound),
     secrets,
+    offers,
+    offerPricing,
+    offerLifecycle,
+    offerExpiry: new OfferExpiryService(
+      prismaService,
+      audit,
+      offers,
+      queue as unknown as QueueService,
+      indexer,
+    ),
+    offerIntegrity: new OfferIntegrityService(
+      prismaService,
+      audit,
+      offers,
+      trust,
+      queue as unknown as QueueService,
+    ),
     reverification: new ReverificationService(
       prismaService,
       audit,
@@ -343,6 +385,8 @@ export function createHarness(prisma: PrismaClient): Harness {
 export async function resetDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
+      admission_offers, application_offers,
+      offer_source_checks, offer_exclusions, offers,
       submission_attempts, application_status_events, application_tasks,
       applications, connector_configs,
       guide_answers, guide_questions, guide_reward_entries, guide_sessions,

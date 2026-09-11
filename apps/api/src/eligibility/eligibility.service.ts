@@ -15,6 +15,15 @@ import { AppError } from '../common/errors/app-error.js';
 import { systemActor } from '../auth/audit-actor.js';
 import { evaluateRequirement, type EvaluationContext } from './rules.js';
 
+/** One rule, in the shape the engine takes. An offer condition is exactly this. */
+export interface RuleSetInput {
+  id: string;
+  ruleType: RuleType;
+  ruleJson: unknown;
+  humanSummary: string;
+  sourceRef: string | null;
+}
+
 /**
  * The eligibility engine (Phase 2 §4, FR-005).
  *
@@ -140,6 +149,51 @@ export class EligibilityService {
         evaluatedAt: now.toISOString(),
         catalogueVersion: String(program.version),
       });
+    }
+    return result;
+  }
+
+  /**
+   * Evaluates arbitrary rule sets for one student — the entry point Phase 5's
+   * offer conditions come through.
+   *
+   * The issue's line is "one rule engine, not two", and this method is what
+   * makes that literally true rather than aspirational: an offer condition is
+   * the same `RequirementInput` shape a programme requirement is, and it runs
+   * through the same `evaluateRequirement`, producing the same four outcomes.
+   * The day a second engine existed would be the day a student was told they
+   * meet a programme's GPA rule and miss its own scholarship's, on the same
+   * transcript.
+   *
+   * The profile and the vault are loaded **once** for the whole batch. A
+   * programme page prices six offers; that should be two queries, not twelve.
+   */
+  async explainRuleSets(
+    userId: string | null,
+    groups: ReadonlyMap<string, readonly RuleSetInput[]>,
+    now: Date = new Date(),
+  ): Promise<Map<string, EligibilityCheck[]>> {
+    const profile = userId === null ? null : await this.loadProfile(userId);
+    const context = await this.buildContext(userId, now);
+
+    const result = new Map<string, EligibilityCheck[]>();
+    for (const [key, rules] of groups) {
+      result.set(
+        key,
+        rules.map((rule) =>
+          evaluateRequirement(
+            {
+              id: rule.id,
+              ruleType: rule.ruleType,
+              ruleJson: rule.ruleJson,
+              humanSummary: rule.humanSummary,
+              sourceRef: rule.sourceRef,
+            },
+            profile,
+            context,
+          ),
+        ),
+      );
     }
     return result;
   }

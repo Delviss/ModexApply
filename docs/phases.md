@@ -602,3 +602,183 @@ not say who they were sending them to.
   the ops queue, and `ConnectorConfig` is what the partner console edits.
   Operator-assisted submission already writes its disclosure; the console that
   triages a dead-lettered submission is Phase 6's.
+
+---
+
+# Phase 5 — offers, scholarships, discounts and fee waivers
+
+Tracks issue [#7](https://github.com/Delviss/ModexApply/issues/7). Covers
+FR-013 and FR-014.
+
+One rule shapes all of it:
+
+> Offers are structured objects, not marketing copy. Show the real price after a
+> discount **only when the eligibility rules are satisfied.**
+
+## Acceptance criteria
+
+| Criterion | State |
+|---|---|
+| An offer cannot reach `Verified Offer` state without source, eligibility, value, deadline, conditions, verifier and last-checked date — enforced by schema and covered by a test | **Done** — `offerPublicationBlockers` in the contract, `OffersService.publish`, and the `offers_publishable` CHECK constraint. Three tests, including one that goes around the service with raw SQL and is refused by the database |
+| The auto-expiry job removes lapsed offers from search, recommendations and price calculations within one cycle, and notifies affected students | **Done** — `OfferExpiryService.sweep`, registered on the `offer-expiry` queue. One cycle unpublishes, expires every attachment, queues a notification per holder and re-indexes every programme that was showing it |
+| A displayed net price is reproducible: every line traces to a specific offer version and its source reference | **Done** — every `saving` line carries `offerId`, `offerKey`, `offerVersion` and `sourceRef`, and `<PriceBreakdown>` renders all four |
+| An ineligible offer is shown with its specific unmet condition and is never included in the net price | **Done** — `computePriceBreakdown` takes eligible and ineligible offers as separate inputs, so there is no code path that could include one by accident |
+| Two non-combinable offers produce one applied offer and a stated reason for the other | **Done** — `resolveStacking`, and the reason names both the exclusion and the offer that won |
+| A source/display mismatch unpublishes the offer, opens a trust case and notifies the partner — verified end to end | **Done** — `OfferIntegrityService.recordSourceCheck`, tested against a real database including the trust case, the evidence row and both notifications |
+| An offer edit does not retroactively change what an existing application referenced | **Done** — `Offer` is effective-dated like `Program`; `supersede` closes and opens rather than updating. Tested by halving a live award and asserting the attachment still resolves to version 1 |
+| Scholarship-savings reporting counts only verified offers realised at enrolment | **Done** — `savingsSecured` filters on both, and `realisedAt` is written in exactly one place: `realiseAtEnrolment`, called from the university's own `enrolled` event |
+| All offer surfaces pass WCAG 2.2 AA in both themes; savings are never communicated by colour alone | **Done** — 10 new pairings in the contrast budget (63 total), and the saving carries a minus sign, the word "saving" and a visually-hidden restatement |
+
+## Decisions worth recording
+
+**One rule engine, literally.** The issue says offer eligibility "reuses the
+same rule engine as programme eligibility. One rule engine, not two." That is
+implemented as `EligibilityService.explainRuleSets` — an offer condition is the
+same `RequirementInput` a programme requirement is, evaluated by the same
+`evaluateRequirement`, producing the same four outcomes. A second engine would
+drift, and the day it drifted a student would be told they meet a programme's
+GPA rule and miss its own scholarship's on the same transcript.
+
+**`missing_data` is not "ineligible".** An unassessed condition makes an offer
+not-eligible-yet, and it renders with the remedy rather than with a refusal. An
+anonymous visitor therefore sees the gross price and every offer marked
+unassessed — which is the honest version of "you might qualify for this", and
+the opposite of advertising the best possible discount to somebody nobody has
+checked.
+
+**A benefit in kind has no price.** Housing, an airport transfer, a paid
+language test: `benefit_in_kind` carries a named benefit and a named provider,
+is attached to no cost line, and contributes nothing to the net price. The CHECK
+constraint enforces `appliesTo = 'none'` for it. Assigning a notional cash value
+to a benefit is exactly the marketing arithmetic this phase replaces.
+
+**Stacking is greedy and explainable, not optimal.** Best standalone saving
+first; every displaced offer is listed with the exclusion that displaced it and
+the offer that won. A smarter search could occasionally beat it — two small
+awards outperforming one large one — and would be unexplainable when it did.
+"We applied the biggest one we could, and here is what it displaced" is a
+sentence a student can check with the university.
+
+**Discounts compound against the balance, not the original.** Two 60% discounts
+on one fee produce 84%, not 120%, because the second applies to what is left.
+Ranking still uses each offer's standalone value: rank by post-interaction value
+and the winner depends on the order the caller passed them in, which would make
+the breakdown non-reproducible.
+
+**Currencies are never converted.** An award in USD against a fee in GBP is
+listed as unpriceable with the reason, rather than converted at an undated rate
+to make a saving look bigger.
+
+**A mismatch is an incident, and the source's number is not applied.** When what
+we display differs from the university's page, the offer comes down first, a
+`fraudulent_offer` trust case opens with the evidence attached, the partner and
+every holder are notified — and the offer keeps the number it had. A partner
+whose page says 5% where our card says 20% might have made a typo or might have
+changed the deal after students priced their year on it, and only a human
+looking at both can tell which.
+
+**A university cannot verify its own offer.** `offer:write` drafts and
+publishes; `offer:verify` is Trust's alone, and `publish` refuses anything not
+already verified. Self-verification is the failure the institution pipeline
+exists to prevent one phase earlier, and a discount is a stronger incentive to
+cut the corner than a programme description is.
+
+**An edit un-verifies.** A superseded offer opens as `draft` / `unverified`.
+Carrying verification forward would let a partner turn a checked 10% into an
+unchecked 2% with nobody looking at it again.
+
+**The admission offer is a different object.** `AdmissionOffer` is its own
+table, its own vocabulary and its own method, with no join to `offers` and no
+component that takes both. The single most damaging thing this phase could do is
+let "you have an offer" mean a discount on a search card and an admission
+decision on a dashboard.
+
+**Red Velvet at its most dangerous.** A discount UI wants to look like a sale.
+There is no countdown timer, no gradient ribbon, no "limited time!" badge. The
+net price is `--mx-ink-900` at the largest size; the original sits above it
+struck through in `--mx-ink-600` at *body* size; the saving is `--mx-success`,
+never brand crimson. An expiring offer shows amber at 14 days and red at 3 —
+with the date, never a ticking clock.
+
+**The card refuses to render, rather than the page remembering to filter.** An
+offer with no verifier or no last-checked date returns `null` from
+`<OfferCard>`. The API filters the same predicate, and the database CHECK makes
+the state unreachable in the first place. Three enforcements of one rule, and
+only the first can explain itself.
+
+## Deviations from the issue, and why
+
+**Value gained a fourth kind.** The issue lists "integer minor units + ISO
+currency, or an explicit percentage — never a free-text string", and also lists
+*student benefit* as a type whose value is housing or an airport transfer.
+Those cannot both be true of one union, so `benefit_in_kind` exists and is
+excluded from all arithmetic. The alternative — pricing a benefit — is the thing
+the rule was written to prevent.
+
+**The price panel quotes the first year, not the course.** It is the only figure
+that is both comparable across universities and actually payable. An offer that
+runs for the whole course says so on its line rather than being multiplied out
+against a duration the catalogue does not promise.
+
+**Offer comparison reuses the programme compare surface.** `ComparisonTable` is
+already the archetype the issue names (`@7ovr/comparison-3`), already re-themed,
+and already carries the decision not to highlight a "recommended" column. A
+second comparison surface would have been a second place for that decision to be
+forgotten.
+
+**The admin deadline picker is a date input.** `@originui/calendar` is recorded
+in the registry and re-bound to the native control: the value is a date the
+university already has written down, and a three-pane calendar widget is a worse
+way to type one than a keyboard.
+
+**The offer admin screen is still a shell.** Like the catalogue admin it renders
+from illustrative rows; the authenticated university data path lands with the
+portal in Phase 6 (#8). What it proves now is the surface — and specifically
+that an admin is told *why* an offer cannot be published yet, field by field.
+
+## Gaps, and why
+
+- **Offers are not yet a search facet.** The expiry sweep re-indexes affected
+  programmes, so the index never carries a lapsed saving; ranking by net price
+  needs the search document to carry a *per-student* figure, which is a
+  different shape of index and belongs with the Phase 7 performance work.
+- **No offer importer.** Offers are created through the API. The CSV/XLSX path
+  the catalogue has would need its own dry-run diff for conditions and
+  exclusions, and inventing one before a partner has asked for it would be
+  guessing at the format.
+- **Source re-checks are recorded, not automated.** `recordSourceCheck` takes
+  what a verifier observed; nothing scrapes the university's page. `dueForRecheck`
+  produces the queue, and the freshness SLA decides who is on it.
+
+## Bugs found while testing
+
+**The expiry sweep notified nobody.** It marked every attachment `expired` and
+*then* asked for the holders to notify — by which point the query filtering on
+`attached`/`accepted` matched nothing. Silent: the sweep still reported success,
+and every student who had priced their year on the award simply never heard.
+Caught by asserting the notification count rather than the sweep's return value.
+Notification now happens before the state change.
+
+**The shared engine told the truth about the wrong object.** A failed
+nationality rule rendered as "This programme does not accept applications from
+nationals of NG" — on a *scholarship* card beside a course the student was
+eligible for. The engine's wording is right for programmes and false here, so a
+failed offer condition is now stated as the offer's own condition plus what the
+profile says. Every other outcome keeps the engine's words, because there the
+two surfaces really do mean the same thing.
+
+**`isRenderableOffer` was defending an unreachable state.** The test that tried
+to force a published offer to have no last-checked date was refused by the
+`offers_publishable` constraint. That is the stronger outcome, so the test now
+asserts the refusal — and the component guard stays as the last line for any
+future surface that builds a card from something other than this API.
+
+## What Phase 6 and Phase 7 get from this
+
+- **Phase 6 (#8)** — admin portals. `OfferAdmin` is the university console's
+  offer tab, `dueForRecheck` is the Trust queue's read model,
+  `OfferSourceCheck` is its evidence trail, and `savingsReport` is the finance
+  surface's scholarship-savings figure.
+- **Phase 7 (#9)** — hardening. The expiry sweep is the first scheduled job
+  whose *absence* is a wrong price rather than stale data, which makes it the
+  natural first alert on the jobs dashboard.

@@ -2302,3 +2302,155 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ---------------------------------------------------------------------------
+   Phase 5 — offers and the price breakdown.
+
+   The whole visual argument of this phase is in these two blocks: a discount UI
+   wants to look like a sale, and this one must not. There is no pulsing badge,
+   no gradient, no strikethrough-and-shout. The net price is the largest thing
+   on the panel because it is the number that matters, not because it is being
+   sold — and the saving is green, never brand crimson, because red is for
+   actions and green is for money saved.
+   --------------------------------------------------------------------------- */
+
+.mx-price { display: flex; flex-direction: column; gap: var(--mx-space-4); }
+
+.mx-price__table { width: 100%; border-collapse: collapse; font-size: var(--mx-text-sm); }
+.mx-price__row > * { padding: var(--mx-space-2) 0; vertical-align: top; text-align: left; }
+.mx-price__row + .mx-price__row { border-top: 1px solid var(--mx-border); }
+
+.mx-price__label {
+  font-weight: var(--mx-weight-regular);
+  color: var(--mx-text);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mx-price__meta { font-size: var(--mx-text-xs); color: var(--mx-text-muted); }
+
+.mx-price__amount {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--mx-text);
+}
+.mx-price__amount[data-kind='saving'] { color: var(--mx-success-text); }
+
+.mx-price__net {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+  padding-top: var(--mx-space-3);
+  border-top: 2px solid var(--mx-border-strong);
+}
+
+/* Body size, muted, struck through. Deliberately not large and not red: an
+   original price shouted at is a sale, and this is a calculation. */
+.mx-price__was { margin: 0; font-size: var(--mx-text-base); color: var(--mx-text-muted); }
+
+.mx-price__value {
+  margin: 0;
+  font-size: var(--mx-text-3xl);
+  line-height: var(--mx-leading-tight);
+  font-weight: var(--mx-weight-semibold);
+  color: var(--mx-ink-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-price__caption { margin: 0; font-size: var(--mx-text-sm); color: var(--mx-text-muted); }
+.mx-price__saving { color: var(--mx-success-text); }
+
+.mx-price__note {
+  padding: var(--mx-space-3);
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-card);
+  background: var(--mx-subtle);
+}
+.mx-price__note-title {
+  margin: 0 0 var(--mx-space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-heading);
+}
+.mx-price__list { margin: 0; padding-left: var(--mx-space-4); font-size: var(--mx-text-sm); color: var(--mx-ink-600); }
+.mx-price__list li + li { margin-top: var(--mx-space-1); }
+
+.mx-price__stamp { margin: 0; font-size: var(--mx-text-xs); color: var(--mx-text-muted); }
+
+/* --- The offer card ------------------------------------------------------ */
+
+.mx-offer { display: flex; flex-direction: column; gap: var(--mx-space-3); }
+
+/* Ineligible: visible and explained, at reduced emphasis. Never hidden, and
+   never styled as though it were available. */
+.mx-offer[data-eligible='false'],
+.mx-offer[data-suppressed='true'] {
+  background: var(--mx-subtle);
+}
+
+.mx-offer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mx-space-3);
+  flex-wrap: wrap;
+}
+.mx-offer__titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mx-offer__name {
+  margin: 0;
+  font-size: var(--mx-text-md);
+  line-height: var(--mx-leading-tight);
+  color: var(--mx-text-heading);
+}
+.mx-offer__value { margin: 0; font-size: var(--mx-text-sm); color: var(--mx-text-muted); }
+.mx-offer__badges { display: flex; gap: var(--mx-space-2); flex-wrap: wrap; }
+
+.mx-offer__saving { margin: 0; font-size: var(--mx-text-sm); color: var(--mx-success-text); }
+
+.mx-offer__unmet {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mx-space-2);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-warning-text);
+}
+.mx-offer__unmet svg { flex: none; margin-top: 2px; }
+
+.mx-offer__terms { margin: 0; font-size: var(--mx-text-sm); color: var(--mx-ink-600); }
+
+.mx-offer__exclusions { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--mx-space-1); }
+.mx-offer__exclusions li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mx-space-2);
+  font-size: var(--mx-text-xs);
+  color: var(--mx-warning-text);
+}
+.mx-offer__exclusions svg { flex: none; margin-top: 2px; }
+
+.mx-offer__method { margin: 0; font-size: var(--mx-text-xs); color: var(--mx-ink-600); }
+
+.mx-offer__deadline {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mx-space-2);
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+}
+.mx-offer__deadline svg { flex: none; margin-top: 1px; }
+.mx-offer__deadline[data-urgency='due'] { color: var(--mx-warning-text); }
+.mx-offer__deadline[data-urgency='urgent'],
+.mx-offer__deadline[data-urgency='lapsed'] { color: var(--mx-danger-text); }
+
+.mx-offer__trust {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+  padding-top: var(--mx-space-2);
+  border-top: 1px solid var(--mx-border);
+}

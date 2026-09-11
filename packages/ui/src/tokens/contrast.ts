@@ -178,6 +178,54 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = Object.freeze([
   { name: 'dark danger on dark subtle (failed state)', foreground: dark.danger, background: dark.subtle, use: 'ui' },
   { name: 'dark ink-900 on dark subtle (submission copy)', foreground: dark.ink900, background: dark.subtle, use: 'body' },
   { name: 'dark ink-600 on dark subtle (submission detail)', foreground: dark.ink600, background: dark.subtle, use: 'body' },
+
+  // --- Phase 5: offers and the price panel -------------------------------
+  //
+  // The one rule worth restating here: the saving is `--mx-success`, never
+  // brand red, and the ineligible card sits on `--mx-subtle` with its unmet
+  // condition in `--mx-warning-text`. Both grounds are measured in both themes,
+  // because an explanation a student cannot read is not an explanation.
+  {
+    name: 'success text on surface (a saving on the price panel)',
+    foreground: semantic.successText,
+    background: neutral.surface,
+    use: 'body',
+    note: 'Phase 5: green is for money saved. Brand crimson never carries a saving.',
+  },
+  {
+    name: 'success text on subtle (a saving on a de-emphasised offer card)',
+    foreground: semantic.successText,
+    background: neutral.subtle,
+    use: 'body',
+  },
+  {
+    name: 'warning text on subtle (the unmet condition on an ineligible offer)',
+    foreground: semantic.warningText,
+    background: neutral.subtle,
+    use: 'body',
+  },
+  {
+    name: 'warning text on surface (an offer inside 14 days)',
+    foreground: semantic.warningText,
+    background: neutral.surface,
+    use: 'body',
+  },
+  {
+    name: 'danger text on surface (an offer inside 3 days)',
+    foreground: semantic.dangerText,
+    background: neutral.surface,
+    use: 'body',
+  },
+  {
+    name: 'ink-900 on surface (the net price, at the largest size)',
+    foreground: neutral.ink900,
+    background: neutral.surface,
+    use: 'large',
+  },
+  { name: 'dark success on dark subtle (a saving on a de-emphasised offer card)', foreground: dark.success, background: dark.subtle, use: 'body' },
+  { name: 'dark warning on dark subtle (an unmet offer condition)', foreground: dark.warning, background: dark.subtle, use: 'body' },
+  { name: 'dark warning on dark surface (an offer inside 14 days)', foreground: dark.warning, background: dark.surface, use: 'body' },
+  { name: 'dark danger on dark surface (an offer inside 3 days)', foreground: dark.danger, background: dark.surface, use: 'body' },
 ]);
 
 /**

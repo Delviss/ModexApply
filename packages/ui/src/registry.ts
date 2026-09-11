@@ -512,6 +512,68 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     implementation: 'Skeleton',
     note: 'Loading state for the applications list, built on the Skeleton primitive.',
   },
+
+  // --- Phase 5 (#7): offers, scholarships, discounts and fee waivers -------
+  //
+  // The re-theme note that matters across all of these: a discount UI wants to
+  // look like a sale. Every vendor original in this group ships urgency —
+  // gradient "best value" ribbons, pulsing countdowns, strikethrough-and-shout
+  // pricing — and all of it came out. The net price is a calm, sourced
+  // calculation; the saving is --mx-success, never brand crimson.
+  {
+    registry: '@7ovr/comparison-3',
+    name: 'Feature Comparison Table (offer comparison / price panel)',
+    section: 'offers',
+    primary: true,
+    status: 'implemented',
+    implementation: 'ComparisonTable + PriceBreakdown',
+    note: 'Grouped sections and a highlighted column, adapted for the best net price. The vendor "recommended plan" treatment is a tinted brand surface and a text label, not a coloured fill: highlighting marks the cheapest option, it does not endorse a university.',
+  },
+  {
+    registry: '@felipemenezes098/card-05',
+    name: 'Stat Card (savings summary tiles)',
+    section: 'offers',
+    primary: true,
+    status: 'implemented',
+    implementation: 'StatCard',
+    note: 'Value plus trend badge for savings secured. `isGood` is passed explicitly here — savings falling is not good news, and the default "up is good" would have read it backwards.',
+  },
+  {
+    registry: '@7ovr/team-members-data-table',
+    name: 'Team Members Data Table (offer admin)',
+    section: 'offers',
+    primary: true,
+    status: 'implemented',
+    implementation: 'DataTable + Badge',
+    note: 'Status badges carry verified / pending / expired, from the same verification vocabulary the student-facing badge uses, so an admin and an applicant never read two different words for one state.',
+  },
+  {
+    registry: '@cnippet-dev/cnippet-empty',
+    name: 'Empty (no offers, or all expired)',
+    section: 'offers',
+    primary: true,
+    status: 'implemented',
+    implementation: 'EmptyState',
+    note: 'Carries the "why there are no offers, and what to relax" copy. An expired offer produces a different sentence from an ineligible one, because they are different situations and only one of them is worth acting on.',
+  },
+  {
+    registry: '@originui/calendar',
+    name: 'Calendar (offer deadline picker)',
+    section: 'offers',
+    primary: true,
+    status: 'implemented',
+    implementation: 'Field (date input)',
+    note: 'The admin deadline picker. Re-bound to the native date input rather than the vendor popover: the value is a date the university already has written down, and a three-pane calendar widget is a worse way to type one than a keyboard.',
+  },
+  {
+    registry: '@cnippet-dev/v-accordion-11',
+    name: 'Searchable FAQ Accordion (terms & conditions)',
+    section: 'offers',
+    primary: true,
+    status: 'implemented',
+    implementation: 'SearchableAccordion',
+    note: 'Terms and conditions on the offer detail. Note what does *not* go behind it: exclusions and stacking rules render on the card itself, because anything that changes what a student gets must not be one click away.',
+  },
 ]);
 
 export function blocksByStatus(status: BlockStatus): readonly BlockEntry[] {
