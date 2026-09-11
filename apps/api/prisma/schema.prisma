@@ -62,6 +62,7 @@ model User {
   guideProfile   StudentGuide?
   conversations  Conversation[]
   guideSessions  GuideSession[]
+  applications   Application[]
 
   @@index([organisationId])
   @@map("users")
@@ -245,6 +246,8 @@ model Institution {
   eligibilityOverrides EligibilityOverride[]
   guides               StudentGuide[]
   questions            GuideQuestion[]
+  applications         Application[]
+  connectors           ConnectorConfig[]
 
   @@index([country])
   @@index([verificationState])
@@ -483,6 +486,7 @@ model Intake {
   staleFields     String[]
 
   requirements Requirement[]
+  applications Application[]
 
   @@index([programKey, applicationDeadline])
   @@index([status])
@@ -1260,17 +1264,17 @@ enum RiskSeverity {
 /// it — and a foreign key would do exactly that, since a cascade or a restrict
 /// both make the evidence a hostage of the row it describes.
 model MessageFlag {
-  id        String       @id @default(uuid())
-  messageId String
-  signal    RiskSignal
-  severity  RiskSeverity
+  id           String       @id @default(uuid())
+  messageId    String
+  signal       RiskSignal
+  severity     RiskSeverity
   /// The exact substrings that matched. Short, and quoted from the message.
   matches      String[]
   bodySnapshot String
   /// SHA-256 of the snapshot, so tampering at the storage layer is detectable.
-  bodyHash    String
-  trustCaseId String?
-  createdAt   DateTime @default(now())
+  bodyHash     String
+  trustCaseId  String?
+  createdAt    DateTime     @default(now())
 
   @@index([messageId])
   @@index([trustCaseId])
@@ -1504,4 +1508,328 @@ model GuideAnswer {
   @@index([questionId])
   @@index([state, publishedAt])
   @@map("guide_answers")
+}
+
+// ---------------------------------------------------------------------------
+// Applications, snapshots and connectors (Phase 4 §1–§3)
+// ---------------------------------------------------------------------------
+
+enum ApplicationState {
+  draft
+  ready
+  submitted_pending
+  submitted
+  failed
+  under_review
+  more_info
+  offer
+  accepted
+  declined
+  rejected
+  withdrawn
+  expired
+  enrolled
+}
+
+enum ConnectorType {
+  api
+  portal_handoff
+  deep_link
+  file_exchange
+  operator_assisted
+}
+
+enum ApplicationOwner {
+  student
+  university
+  modex_ops
+}
+
+enum ApplicationTaskType {
+  complete_profile_field
+  upload_document
+  replace_document
+  accept_consent
+  answer_question
+  pay_application_fee
+  university_review
+  provide_more_info
+  operator_submission
+}
+
+enum ApplicationTaskStatus {
+  open
+  blocked
+  done
+  cancelled
+}
+
+enum SubmissionAttemptState {
+  in_flight
+  accepted
+  awaiting_handoff
+  queued
+  rejected
+  failed
+  dead_lettered
+}
+
+enum InboundStatusKind {
+  received
+  under_review
+  more_info_required
+  offer_made
+  rejected
+  withdrawn
+  enrolled
+}
+
+/// One application, for one student, against one intake.
+///
+/// `programKey` rather than `programId`: an application follows the programme
+/// across effective-dated versions, and the exact version it was *submitted*
+/// against lives on the snapshot, which is the only place a version needs to be
+/// pinned. Pinning it here as well would mean an editorial change to the
+/// description silently orphaned a draft.
+model Application {
+  id            String           @id @default(uuid())
+  studentId     String
+  institutionId String
+  programKey    String
+  intakeId      String
+  state         ApplicationState @default(draft)
+  /// Which route this application takes. Read from the partner's connector
+  /// configuration at creation and frozen, because changing it mid-flight would
+  /// mean a payload built for one protocol delivered over another.
+  connectorId   String?
+  connectorType ConnectorType?
+  /// Who the application is waiting on. Drives both checklists from one column.
+  currentOwner  ApplicationOwner @default(student)
+
+  /// The university's own reference, once they have given one. Until this is
+  /// non-null the application cannot be in `submitted` — enforced in
+  /// `ApplicationsService`, and the reason `submitted_pending` exists.
+  externalRef String?
+  submittedAt DateTime?
+  confirmedAt DateTime?
+
+  /// The requirement ids and versions the student was shown when they marked
+  /// the application ready. Re-validation at submission compares against this;
+  /// a timestamp would only answer "did anything get written?".
+  acknowledgedRequirements Json      @default("[]")
+  /// Set when a Modex operator submitted on the student's behalf. Non-null is
+  /// what makes `<DisclosureNotice>` permanent on the application.
+  operatorSubmittedById    String?
+  operatorSubmittedAt      DateTime?
+
+  withdrawnAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  student     User                     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  institution Institution              @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  intake      Intake                   @relation(fields: [intakeId], references: [id], onDelete: Restrict)
+  connector   ConnectorConfig?         @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+  tasks       ApplicationTask[]
+  attempts    SubmissionAttempt[]
+  events      ApplicationStatusEvent[]
+
+  /// One application per student per intake, enforced in the database rather
+  /// than in a service check that two concurrent requests can both pass.
+  ///
+  /// The issue allows duplicates "where partner rules allow". That escape hatch
+  /// is not built: it needs a per-partner policy and a rule for which of the
+  /// duplicates a status event belongs to, and guessing at either now would be
+  /// guessing. A different intake of the same programme is a different row and
+  /// is allowed today.
+  @@unique([studentId, intakeId])
+  @@index([studentId, state])
+  @@index([institutionId, state])
+  @@index([externalRef])
+  @@map("applications")
+}
+
+/// Drives the student's checklist and the university's queue from one table,
+/// because "who is this waiting on?" has to have exactly one answer.
+model ApplicationTask {
+  id            String                @id @default(uuid())
+  applicationId String
+  owner         ApplicationOwner
+  type          ApplicationTaskType
+  title         String
+  /// What to do about it, in the student's words. A task with no remedy is a nag.
+  detail        String?
+  dueAt         DateTime?
+  status        ApplicationTaskStatus @default(open)
+  createdAt     DateTime              @default(now())
+  completedAt   DateTime?
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, status])
+  @@index([owner, status, dueAt])
+  @@map("application_tasks")
+}
+
+/// **Append-only. There is no edit path, for any role** (Phase 4 §2, FR-011).
+///
+/// The migration installs the same trigger `audit_events` and `message_flags`
+/// carry. A snapshot that can be edited by the process acting on it is not a
+/// record of what was sent, it is a record of what someone later wished had
+/// been sent.
+///
+/// **No foreign keys at all**, and for a reason that had to be measured rather
+/// than assumed: a referential `ON DELETE CASCADE` runs a real DELETE against
+/// the child table and *does* fire its row triggers. An `applicationId`
+/// foreign key would therefore have made `DELETE FROM applications` fail
+/// outright, and `TRUNCATE ... CASCADE` with it — the append-only guarantee
+/// quietly turning into "an application can never be removed". `message_flags`
+/// avoids the same trap for the same reason, one phase earlier.
+///
+/// So the columns below are plain references. `documentVersionIds` are exact
+/// `DocumentVersion` ids and the payload carries their checksums, so a student
+/// uploading a better scan tomorrow changes nothing here; a version removed
+/// under a retention sweep does not take the evidence of what was submitted
+/// with it either.
+model ApplicationSnapshot {
+  id                 String   @id @default(uuid())
+  applicationId      String
+  /// Which *submission* this snapshot froze — not which network call.
+  ///
+  /// The distinction is load-bearing. Retrying a timeout re-sends these exact
+  /// bytes under the same partner key, so it shares this snapshot; resubmitting
+  /// after a rejection builds a new payload, so it gets the next number. One
+  /// snapshot can therefore back several `SubmissionAttempt` rows, and that is
+  /// what makes "the payload is reproducible" true across a retry storm.
+  submissionNo       Int
+  /// Content hash of the profile data that went into the payload.
+  profileVersion     String
+  documentVersionIds String[]
+  /// The payload exactly as serialised. Canonical JSON, so the bytes are a
+  /// function of the values rather than of key insertion order.
+  payload            Json
+  /// SHA-256 over the canonical form of `payload`.
+  payloadHash        String
+  createdAt          DateTime @default(now())
+
+  @@unique([applicationId, submissionNo])
+  @@index([payloadHash])
+  @@map("application_snapshots")
+}
+
+/// One partner's connector configuration. The adapter boundary is what keeps
+/// university-specific logic out of the core: this row is the configuration,
+/// and `ConnectorRegistry` picks the adapter for `type`.
+model ConnectorConfig {
+  id                  String        @id @default(uuid())
+  institutionId       String
+  type                ConnectorType
+  displayName         String
+  /// Where the payload goes. Null for `operator_assisted`, which has no endpoint.
+  endpointUrl         String?
+  /// Reference to the credential in the secret store. **Never the secret.**
+  credentialRef       String?
+  /// Reference to the webhook signing secret, likewise by name only.
+  signingSecretRef    String?
+  /// Per-partner poll budget for connectors with no webhooks. A university that
+  /// asks for one call a minute gets one call a minute.
+  pollIntervalSeconds Int           @default(900)
+  /// Flag gating rollout. Every connector ships behind one, per partner.
+  featureFlag         String        @default("connector.direct_application")
+  enabled             Boolean       @default(false)
+  /// Free-form partner settings the adapter understands. No core branch reads it.
+  settings            Json          @default("{}")
+  lastPolledAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  institution  Institution              @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  applications Application[]
+  events       ApplicationStatusEvent[]
+
+  @@unique([institutionId, type])
+  @@index([enabled])
+  @@map("connector_configs")
+}
+
+/// Every attempt to hand a payload to a university, successful or not.
+///
+/// The idempotency key is stored here as well as in `idempotency_records`, and
+/// the two answer different questions: the platform record stops a duplicate
+/// *request*, and this column is what is sent to the partner so a retry cannot
+/// create a duplicate *application at the university*.
+model SubmissionAttempt {
+  id             String                 @id @default(uuid())
+  applicationId  String
+  connectorId    String?
+  /// The snapshot whose bytes this call sent. Every attempt has one. A plain
+  /// reference rather than a foreign key, for the same reason as above: a
+  /// constraint pointing at an append-only table is a constraint that can
+  /// block deleting the parent.
+  snapshotId     String
+  /// Sequential network call against this application, retries included.
+  attemptNo      Int
+  state          SubmissionAttemptState @default(in_flight)
+  /// **The partner-facing key**, and deliberately not unique here.
+  ///
+  /// It is derived from the snapshot, so every retry of one submission carries
+  /// the same value and the university's own duplicate guard sees one
+  /// application. The *platform's* duplicate guard is a different mechanism
+  /// living in `idempotency_records`, keyed on the client's request header;
+  /// collapsing the two would mean a client that retried with a fresh header
+  /// created a second application at the university.
+  idempotencyKey String
+  /// Set only by an `accepted` outcome carrying a non-empty reference.
+  externalRef    String?
+  /// Whatever the partner returned, verbatim. The receipt, kept as evidence.
+  responseBody   Json                   @default("{}")
+  failureCode    String?
+  failureReason  String?
+  /// The trace from click to external call lives on this column.
+  correlationId  String
+  startedAt      DateTime               @default(now())
+  finishedAt     DateTime?
+  nextRetryAt    DateTime?
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, attemptNo])
+  @@index([snapshotId])
+  @@index([idempotencyKey])
+  @@index([state, nextRetryAt])
+  @@index([correlationId])
+  @@map("submission_attempts")
+}
+
+/// Inbound status from a university. **Every event is kept**, including ones
+/// that changed nothing: the TRD's "keep all inbound status events" is what
+/// makes a disputed decision reconstructable.
+model ApplicationStatusEvent {
+  id              String            @id @default(uuid())
+  applicationId   String?
+  connectorId     String?
+  /// The partner's own event id — the idempotency key for inbound traffic.
+  providerEventId String
+  externalRef     String
+  kind            InboundStatusKind
+  occurredAt      DateTime
+  receivedAt      DateTime          @default(now())
+  /// Partner detail, stored verbatim and never interpreted.
+  detail          Json              @default("{}")
+  /// False when the event was valid but changed no state — a duplicate status,
+  /// or one arriving out of order. Kept anyway.
+  applied         Boolean           @default(false)
+  /// Why it was not applied, when it was not.
+  skippedReason   String?
+  correlationId   String
+
+  application Application?     @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  connector   ConnectorConfig? @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+
+  /// Replay safety, as a constraint rather than as a check in application code.
+  @@unique([connectorId, providerEventId])
+  @@index([applicationId, occurredAt])
+  @@index([externalRef])
+  @@map("application_status_events")
 }

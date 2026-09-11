@@ -23,6 +23,11 @@ export const QUEUES = {
   searchIndex: 'search-index',
   documentScan: 'document-scan',
   guideReverification: 'guide-reverification',
+  // Phase 4. Submission retries are their own queue rather than a generic one:
+  // a backed-up notification queue must never delay a retry that is holding an
+  // application in `submitted_pending`.
+  connectorSubmission: 'connector-submission',
+  connectorPoll: 'connector-poll',
   notifications: 'notifications',
 } as const;
 

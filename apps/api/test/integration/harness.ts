@@ -22,7 +22,16 @@ import { TrustService } from '../../src/trust/trust.service.js';
 import { SessionsService } from '../../src/sessions/sessions.service.js';
 import { QaService } from '../../src/qa/qa.service.js';
 import type { MalwareScanner, ScanVerdict } from '../../src/documents/scanner.port.js';
-import type { AccessContext, Role } from '@modex/contracts';
+import { ApplicationsService } from '../../src/applications/applications.service.js';
+import { ApplicationStateService } from '../../src/applications/application-state.service.js';
+import { PayloadBuilderService } from '../../src/applications/payload-builder.service.js';
+import { SubmissionService } from '../../src/applications/submission.service.js';
+import { ConnectorRegistry } from '../../src/connectors/connector.registry.js';
+import { InboundStatusService } from '../../src/connectors/inbound-status.service.js';
+import { StatusPollService } from '../../src/connectors/status-poll.service.js';
+import type { ConnectorPort, SecretResolver } from '../../src/connectors/connector.port.js';
+import { FeatureFlagService } from '../../src/config/feature-flags.js';
+import type { AccessContext, ConnectorType, Role, SubmissionOutcome } from '@modex/contracts';
 
 /**
  * Integration harness.
@@ -119,6 +128,61 @@ export interface Harness {
   trust: TrustService;
   sessions: SessionsService;
   qa: QaService;
+  applications: ApplicationsService;
+  applicationState: ApplicationStateService;
+  payloads: PayloadBuilderService;
+  submissions: SubmissionService;
+  connector: ScriptedConnector;
+  inbound: InboundStatusService;
+  poll: StatusPollService;
+  secrets: SecretResolver;
+}
+
+/**
+ * A connector the test drives.
+ *
+ * Standing in for a university rather than for a network: the property under
+ * test is what Modex does with each outcome, and a real HTTP call would only
+ * add a way for these tests to fail for reasons that have nothing to do with
+ * the guarantee. The adapters themselves are covered against recorded fixtures
+ * in `connector-contract.test.ts`.
+ */
+export class ScriptedConnector implements ConnectorPort {
+  readonly type: ConnectorType = 'api';
+  readonly calls: { idempotencyKey: string; documentVersionIds: string[]; payloadHash: unknown }[] = [];
+  /** Queued outcomes, consumed in order; the last one repeats. */
+  outcomes: SubmissionOutcome[] = [
+    { status: 'accepted', externalRef: 'UNI-REF-1', receivedAt: new Date().toISOString(), evidence: {} },
+  ];
+
+  async submit(request: Parameters<ConnectorPort['submit']>[0]): Promise<SubmissionOutcome> {
+    this.calls.push({
+      idempotencyKey: request.idempotencyKey,
+      documentVersionIds: request.documents.map((document) => document.versionId),
+      payloadHash: request.payload.application.id,
+    });
+    return this.outcomes.length > 1
+      ? this.outcomes.shift()!
+      : (this.outcomes[0] ?? {
+          status: 'retryable_failure',
+          reason: 'no outcome scripted',
+          retryAfterSeconds: null,
+        });
+  }
+
+  polled: Awaited<ReturnType<NonNullable<ConnectorPort['poll']>>> = [];
+
+  async poll(): Promise<Awaited<ReturnType<NonNullable<ConnectorPort['poll']>>>> {
+    return this.polled;
+  }
+
+  reset(): void {
+    this.calls.length = 0;
+    this.polled.length = 0;
+    this.outcomes = [
+      { status: 'accepted', externalRef: 'UNI-REF-1', receivedAt: new Date().toISOString(), evidence: {} },
+    ];
+  }
 }
 
 /**
@@ -182,6 +246,39 @@ export function createHarness(prisma: PrismaClient): Harness {
   const trust = new TrustService(prismaService, audit);
   const messaging = new MessagingService(prismaService, audit, guides, trust);
   const sessions = new SessionsService(prismaService, audit, guides, trust);
+
+  // Phase 4. Every partner secret is a test constant here, which is also how
+  // `EnvSecretResolver` behaves in production: the connector row holds a name,
+  // never a credential.
+  const secrets: SecretResolver = {
+    resolve: (ref) => (ref === null ? null : `secret-for-${ref}`),
+  };
+  const connector = new ScriptedConnector();
+  const documents = new DocumentsService(
+    prismaService,
+    audit,
+    storage,
+    scanner,
+    queue as unknown as QueueService,
+  );
+  const registry = new ConnectorRegistry(
+    [connector],
+    new FeatureFlagService('connector.direct_application'),
+  );
+  const applicationState = new ApplicationStateService(prismaService, audit);
+  const payloads = new PayloadBuilderService(prismaService, documents, storage);
+  const submissions = new SubmissionService(
+    prismaService,
+    audit,
+    registry,
+    applicationState,
+    queue as unknown as QueueService,
+    documents,
+    storage,
+  );
+  const eligibility = new EligibilityService(prismaService, audit);
+  const inbound = new InboundStatusService(prismaService, audit, applicationState, secrets);
+
   return {
     prisma,
     audit,
@@ -197,15 +294,9 @@ export function createHarness(prisma: PrismaClient): Harness {
     catalogue: new CatalogueService(prismaService, audit, queue as unknown as QueueService),
     ingestion: new IngestionService(prismaService, audit),
     freshness: new FreshnessService(prismaService, audit, queue as unknown as QueueService),
-    eligibility: new EligibilityService(prismaService, audit),
+    eligibility,
     students: new StudentsService(prismaService, audit),
-    documents: new DocumentsService(
-      prismaService,
-      audit,
-      storage,
-      scanner,
-      queue as unknown as QueueService,
-    ),
+    documents,
     search: new SearchService(prismaService, index),
     indexer: new IndexerService(prismaService, index),
     index,
@@ -216,6 +307,21 @@ export function createHarness(prisma: PrismaClient): Harness {
     messaging,
     sessions,
     qa: new QaService(prismaService, audit, guides),
+    applications: new ApplicationsService(
+      prismaService,
+      audit,
+      applicationState,
+      payloads,
+      submissions,
+      eligibility,
+    ),
+    applicationState,
+    payloads,
+    submissions,
+    connector,
+    inbound,
+    poll: new StatusPollService(prismaService, audit, registry, inbound),
+    secrets,
     reverification: new ReverificationService(
       prismaService,
       audit,
@@ -237,6 +343,8 @@ export function createHarness(prisma: PrismaClient): Harness {
 export async function resetDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
+      submission_attempts, application_status_events, application_tasks,
+      applications, connector_configs,
       guide_answers, guide_questions, guide_reward_entries, guide_sessions,
       guide_availability_slots, trust_case_events, trust_cases,
       messages, conversations,

@@ -78,7 +78,23 @@ export const AUDIT_ACTIONS = [
   'qa.answer_submitted',
   'qa.answer_published',
   'qa.answer_rejected',
+  'application.created',
+  'application.updated',
+  'application.state_changed',
+  'application.ready_blocked',
+  'application.snapshot_created',
+  'application.consent_recorded',
+  'application.submission_attempted',
   'application.submitted',
+  'application.submission_failed',
+  'application.submission_dead_lettered',
+  'application.operator_submitted',
+  'application.status_received',
+  'application.task_created',
+  'application.task_completed',
+  'connector.event_received',
+  'connector.event_rejected',
+  'connector.poll_completed',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -130,6 +146,14 @@ export const REDACTED_KEYS = [
   'contractBody',
   'mfaSecret',
   'otp',
+  // Phase 4. A connector's credentials pass through the submission path, and a
+  // partner's signing secret in an audit row would be a gift to anyone who can
+  // read the trail — which, by design, includes Trust and ops.
+  'signingSecret',
+  'webhookSecret',
+  'connectorSecret',
+  'clientSecret',
+  'continuationUrl',
 ] as const;
 
 const REDACTED_LOOKUP = new Set<string>(REDACTED_KEYS.map((k) => k.toLowerCase()));

@@ -21,6 +21,12 @@ interface VaultDocument {
   usable: boolean;
 }
 
+interface ApplicationSummary {
+  id: string;
+  state: string;
+  nextAction: string | null;
+}
+
 /**
  * The student dashboard (Phase 2 design spec).
  *
@@ -34,9 +40,11 @@ export default async function DashboardPage() {
 
   let data: ProfileResponse;
   let documents: VaultDocument[] = [];
+  let applications: ApplicationSummary[] = [];
   try {
     data = await apiGetAs<ProfileResponse>('/me/profile', token);
     documents = (await apiGetAs<{ data: VaultDocument[] }>('/documents', token)).data;
+    applications = (await apiGetAs<{ data: ApplicationSummary[] }>('/applications', token)).data;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) redirect('/login?next=/dashboard');
     throw error;
@@ -44,6 +52,9 @@ export default async function DashboardPage() {
 
   const usableDocuments = documents.filter((document) => document.usable).length;
   const blockedDocuments = documents.length - usableDocuments;
+  const awaitingStudent = applications.filter(
+    (application) => application.nextAction !== null,
+  ).length;
 
   return (
     <main className="mx-dashboard">
@@ -71,6 +82,15 @@ export default async function DashboardPage() {
             blockedDocuments === 0
               ? 'All your uploads have been checked'
               : `${blockedDocuments} still need attention`
+          }
+        />
+        <StatCard
+          label="Applications"
+          value={<Link href="/applications">{applications.length}</Link>}
+          caption={
+            awaitingStudent === 0
+              ? 'Nothing is waiting on you'
+              : `${awaitingStudent} waiting on you`
           }
         />
         <StatCard
@@ -109,7 +129,9 @@ export default async function DashboardPage() {
             description="The shortest path to a complete application."
           />
           <div className="mx-dashboard__section">
-            {data.completeness.missing.length === 0 && blockedDocuments === 0 ? (
+            {data.completeness.missing.length === 0 &&
+            blockedDocuments === 0 &&
+            awaitingStudent === 0 ? (
               <EmptyState
                 title="Nothing outstanding"
                 description="Your profile is complete and every document has been checked. Search for a programme and check your eligibility against it."
@@ -126,6 +148,17 @@ export default async function DashboardPage() {
                     <span className="mx-card__description"> — {gap.unlocks}</span>
                   </li>
                 ))}
+                {awaitingStudent > 0 ? (
+                  <li>
+                    <Link href="/applications">
+                      {awaitingStudent} application(s) need something from you
+                    </Link>
+                    <span className="mx-card__description">
+                      {' '}
+                      — an application sitting on your checklist is not being read by anyone
+                    </span>
+                  </li>
+                ) : null}
                 {blockedDocuments > 0 ? (
                   <li>
                     <Link href="/documents">Fix {blockedDocuments} document(s)</Link>

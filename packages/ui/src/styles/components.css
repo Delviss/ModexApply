@@ -1972,3 +1972,333 @@
   gap: var(--mx-space-2);
   font-size: var(--mx-text-sm);
 }
+
+/* --------------------------------------------------------------------------
+   Submission state (Phase 4) — the four states, kept visually distinct.
+
+   The whole point is that these cannot be confused with one another at a
+   glance, so each carries a border colour, a left rule and its own ground, not
+   just a badge. `sending` is deliberately the loudest of the non-failure states
+   because it is the one a student is most likely to misread as done.
+   -------------------------------------------------------------------------- */
+.mx-submission {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+  padding: var(--mx-space-4);
+  border: 1px solid var(--mx-border);
+  border-left-width: 3px;
+  border-radius: var(--mx-radius-card);
+  background: var(--mx-surface);
+}
+
+.mx-submission[data-display='not_submitted'] { border-left-color: var(--mx-ink-500); }
+.mx-submission[data-display='sending'] {
+  border-color: var(--mx-info);
+  border-left-color: var(--mx-info);
+  background: var(--mx-subtle);
+}
+.mx-submission[data-display='confirmed'] { border-left-color: var(--mx-success); }
+.mx-submission[data-display='failed'] {
+  border-color: var(--mx-danger);
+  border-left-color: var(--mx-danger);
+  background: var(--mx-subtle);
+}
+
+.mx-submission__headline { margin: 0; }
+.mx-submission__detail { margin: 0; font-size: var(--mx-text-sm); color: var(--mx-text-muted); }
+.mx-submission__next {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  font-weight: var(--mx-weight-medium);
+  color: var(--mx-text);
+}
+.mx-submission__ref {
+  font-family: var(--mx-font-mono);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text);
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   Consent checklist (Phase 4)
+   -------------------------------------------------------------------------- */
+.mx-consents { border: 0; margin: 0; padding: 0; }
+.mx-consents__legend {
+  padding: 0;
+  font-size: var(--mx-text-md);
+  font-weight: var(--mx-weight-semibold);
+  color: var(--mx-text);
+}
+.mx-consents__intro,
+.mx-consents__footnote {
+  margin: var(--mx-space-2) 0 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+.mx-consents__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+  margin: var(--mx-space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mx-consents__item {
+  padding: var(--mx-space-3);
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-card);
+  background: var(--mx-surface);
+}
+.mx-consents__body {
+  /* Indented to sit under the label rather than under the box, so the sentence
+     reads as the consent's own wording rather than as a second control. */
+  margin: var(--mx-space-2) 0 0 calc(var(--mx-space-4) + var(--mx-space-3));
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Receipt card (Phase 4)
+   -------------------------------------------------------------------------- */
+.mx-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-3);
+  padding: var(--mx-space-4);
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-card);
+  background: var(--mx-surface);
+}
+.mx-receipt__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mx-space-3);
+  flex-wrap: wrap;
+}
+.mx-receipt__title {
+  margin: 0;
+  font-size: var(--mx-text-md);
+  font-weight: var(--mx-weight-semibold);
+  color: var(--mx-text);
+}
+.mx-receipt__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--mx-space-3);
+  margin: 0;
+}
+.mx-receipt__grid dt {
+  font-size: var(--mx-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mx-text-muted);
+}
+.mx-receipt__grid dd {
+  margin: 2px 0 0;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text);
+}
+.mx-receipt__ref {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  flex-wrap: wrap;
+  font-family: var(--mx-font-mono);
+  overflow-wrap: anywhere;
+}
+.mx-receipt__pending { color: var(--mx-text-muted); font-family: var(--mx-font-sans); }
+.mx-receipt__hash { font-family: var(--mx-font-mono); color: var(--mx-text-muted); }
+.mx-receipt__download { font-size: var(--mx-text-sm); }
+
+/* --------------------------------------------------------------------------
+   Application timeline (Phase 4)
+
+   Current is brand, complete is success, pending is a strong border and a
+   failure is danger — and every one of those also carries a visually-hidden
+   word, because a timeline read through a screen reader must not collapse to
+   an undifferentiated list.
+   -------------------------------------------------------------------------- */
+.mx-timeline { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.mx-timeline__entry {
+  position: relative;
+  display: flex;
+  gap: var(--mx-space-3);
+  padding-bottom: var(--mx-space-4);
+}
+.mx-timeline__entry:last-child { padding-bottom: 0; }
+.mx-timeline__entry::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: 0;
+  width: 2px;
+  background: var(--mx-border);
+}
+.mx-timeline__entry:last-child::before { display: none; }
+.mx-timeline__marker {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 4px;
+  border-radius: 50%;
+  /* --mx-border-input, not --mx-border-strong: this ring is the only thing
+     saying "this step has not happened", and the decorative outline colour
+     measures 1.85:1 against white. A control boundary and a state marker have
+     the same 3:1 requirement for the same reason. */
+  border: 2px solid var(--mx-border-input);
+  background: var(--mx-surface);
+}
+.mx-timeline__entry[data-tone='done'] .mx-timeline__marker {
+  border-color: var(--mx-success);
+  background: var(--mx-success);
+}
+.mx-timeline__entry[data-tone='current'] .mx-timeline__marker {
+  border-color: var(--mx-brand-600);
+  background: var(--mx-brand-600);
+  box-shadow: 0 0 0 3px var(--mx-brand-50);
+}
+.mx-timeline__entry[data-tone='error'] .mx-timeline__marker {
+  border-color: var(--mx-danger);
+  background: var(--mx-danger);
+}
+.mx-timeline__body { display: flex; flex-direction: column; gap: 2px; }
+.mx-timeline__title {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  font-weight: var(--mx-weight-medium);
+  color: var(--mx-text);
+}
+.mx-timeline__entry[data-tone='error'] .mx-timeline__title { color: var(--mx-danger-text); }
+.mx-timeline__entry[data-tone='pending'] .mx-timeline__title { color: var(--mx-text-muted); }
+/* Attribution is never styled as Modex's own voice. */
+.mx-timeline__attribution {
+  margin: 0;
+  font-size: var(--mx-text-xs);
+  font-weight: var(--mx-weight-medium);
+  color: var(--mx-text-muted);
+}
+.mx-timeline__detail,
+.mx-timeline__at { margin: 0; font-size: var(--mx-text-xs); color: var(--mx-text-muted); }
+
+/* Application surfaces (Phase 4) ----------------------------------------- */
+
+.mx-applications,
+.mx-application,
+.mx-receipt-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--mx-space-8) var(--mx-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+}
+
+/* A table is the one thing on these pages allowed to scroll sideways. */
+.mx-applications__scroll { overflow-x: auto; margin-block-start: var(--mx-space-4); }
+
+.mx-applications__operator {
+  display: block;
+  margin-block-start: 2px;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+}
+
+.mx-application__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+  gap: var(--mx-space-4);
+  align-items: start;
+}
+
+.mx-application__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+  position: sticky;
+  top: var(--mx-space-6);
+}
+
+@media (max-width: 900px) {
+  .mx-application__columns { grid-template-columns: minmax(0, 1fr); }
+  /* Unsticks on narrow screens: a sticky sidebar on a phone is a sticky
+     three-quarters of the viewport. */
+  .mx-application__side { position: static; }
+}
+
+.mx-application-wizard,
+.mx-application-wizard__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-4);
+}
+
+.mx-application-wizard__checksum {
+  font-family: var(--mx-font-mono);
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text-muted);
+}
+
+/* The blocking reasons under a disabled submit. Never hidden: a button that
+   will not press and will not say why is a dead end. */
+.mx-application-wizard__reason {
+  margin: 0;
+  padding-inline-start: var(--mx-space-4);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-text-muted);
+}
+
+@media (max-width: 640px) {
+  /* Sticky footer on mobile, full-width primary action, per the Phase 4
+     design rule. */
+  .mx-application-wizard .mx-wizard__footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding: var(--mx-space-3) 0;
+    background: var(--mx-canvas);
+    border-block-start: 1px solid var(--mx-border);
+  }
+  .mx-application-wizard .mx-wizard__footer .mx-button { flex: 1; }
+}
+
+.mx-receipt-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--mx-space-3);
+  margin: var(--mx-space-4) 0 0;
+}
+.mx-receipt-page__grid dt {
+  font-size: var(--mx-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mx-text-muted);
+}
+.mx-receipt-page__grid dd {
+  margin: 2px 0 0;
+  font-family: var(--mx-font-mono);
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text);
+  overflow-wrap: anywhere;
+}
+
+.mx-receipt-page__payload {
+  margin: var(--mx-space-4) 0 0;
+  padding: var(--mx-space-3);
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-card);
+  background: var(--mx-subtle);
+  font-family: var(--mx-font-mono);
+  font-size: var(--mx-text-xs);
+  color: var(--mx-text);
+  /* Canonical JSON is one long line by design; wrapping keeps it readable
+     without reformatting the bytes the fingerprint was taken over. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

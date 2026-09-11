@@ -99,6 +99,10 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'trust_case:write',
     'application:read',
     'application:write',
+    // The applicant submits their own application. Phase 0 left this grant with
+    // `superadmin` only, which would have made the one route in the product
+    // that matters reachable by nobody who needs it.
+    'application:submit',
     'offer:read',
   ],
   /**
@@ -179,6 +183,11 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'trust_case:read',
     'session:manage',
     'application:read',
+    // Operator-assisted submission (Phase 4 §3) — the temporary exception, and
+    // the only reason a Modex operator can submit anything. `ApplicationsService`
+    // additionally refuses unless the student granted that specific consent, and
+    // the application carries a permanent disclosure afterwards.
+    'application:submit',
     'offer:read',
     'audit:read',
   ],

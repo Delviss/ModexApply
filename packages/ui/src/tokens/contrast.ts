@@ -130,6 +130,54 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = Object.freeze([
   { name: 'dark border-input on dark ground', foreground: dark.borderInput, background: dark.ground, use: 'ui' },
   { name: 'dark border-input on dark elevated', foreground: dark.borderInput, background: dark.elevated, use: 'ui' },
   { name: 'dark ground on dark brand action (button label)', foreground: dark.ground, background: dark.brandAction, use: 'body' },
+
+  // --- Phase 4: submission state, receipts and the timeline ---------------
+  // The four submission states must stay distinguishable, and the ground under
+  // two of them is `subtle` rather than `surface`. Every pairing that puts text
+  // or a boundary on that ground is measured here rather than assumed from the
+  // surface-based pairs above.
+  {
+    name: 'info on subtle (sending state boundary)',
+    foreground: semantic.info,
+    background: neutral.subtle,
+    use: 'ui',
+  },
+  {
+    name: 'danger on subtle (failed state boundary)',
+    foreground: semantic.danger,
+    background: neutral.subtle,
+    use: 'ui',
+  },
+  {
+    name: 'success on surface (confirmed state boundary)',
+    foreground: semantic.success,
+    background: neutral.surface,
+    use: 'ui',
+  },
+  {
+    name: 'ink-500 on surface (not-submitted boundary)',
+    foreground: neutral.ink500,
+    background: neutral.surface,
+    use: 'ui',
+    note: 'Boundary only, at the 3:1 non-text minimum. The words next to it are ink-900.',
+  },
+  {
+    name: 'brand-600 on surface (current timeline node)',
+    foreground: brand[600],
+    background: neutral.surface,
+    use: 'ui',
+  },
+  {
+    name: 'border-input on surface (pending timeline node)',
+    foreground: neutral.borderInput,
+    background: neutral.surface,
+    use: 'ui',
+    note: 'A pending node is an unfilled ring, and a ring nobody can see is not a step nobody has taken. Uses --mx-border-input rather than --mx-border-strong for the same reason controls do: the decorative outline measures 1.85:1 and this has to carry meaning.',
+  },
+  { name: 'dark info on dark subtle (sending state)', foreground: dark.info, background: dark.subtle, use: 'ui' },
+  { name: 'dark danger on dark subtle (failed state)', foreground: dark.danger, background: dark.subtle, use: 'ui' },
+  { name: 'dark ink-900 on dark subtle (submission copy)', foreground: dark.ink900, background: dark.subtle, use: 'body' },
+  { name: 'dark ink-600 on dark subtle (submission detail)', foreground: dark.ink600, background: dark.subtle, use: 'body' },
 ]);
 
 /**

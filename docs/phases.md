@@ -398,3 +398,207 @@ about a pattern across changes, which is a human judgement.
   preserved evidence alongside the case. The finance surface reads
   `guide_reward_entries`, whose state machine ends at `paid` and has no path
   back — a reversal is a new entry, not an edit.
+
+---
+
+---
+
+# Phase 4 — applications, immutable snapshots and the connector layer
+
+Tracks issue [#6](https://github.com/Delviss/ModexApply/issues/6), FR-009 –
+FR-012 and FR-018.
+
+One rule governs the phase, and every design decision below follows from it:
+
+> A submission is **not** successful because Modex generated a payload. It is
+> successful only after the university endpoint confirms receipt and returns a
+> durable reference or equivalent evidence.
+
+`submitted_pending` is that rule expressed as a state. It exists so there is
+somewhere honest to stand between "we sent it" and "they have it", and so that
+the only route to `submitted` runs through a stored external reference.
+
+## Acceptance criteria
+
+| Criterion | State |
+|---|---|
+| A student can take an application from `draft` to a confirmed `submitted` state with a durable external reference from a real partner connector | **Partial** — the whole path is built and verified end to end against a real PostgreSQL, with a scripted connector standing in for a university. "A *real* partner connector" needs a partner; see *Gaps* |
+| Every illegal state transition is rejected server-side, with a test per edge | **Done** — the test walks all 182 ordered pairs of the 14 states rather than a sample, and asserts the refusal code for each. Authority is checked separately from legality: `submitted` is legal from `submitted_pending`, and a student still cannot set it |
+| Replaying a submission with the same idempotency key produces no duplicate at the university and returns the original result | **Done** — two mechanisms, deliberately separate. `IdempotencyService` guards the *request* on the client's header; `partnerIdempotencyKey` is derived from the snapshot and is what the university dedupes on, so a client retrying with a fresh header still cannot create a second application there |
+| A connector timeout leaves the application in `submitted_pending`, retries with backoff, and **never** shows the student "Submitted" | **Done** — the timeout test asserts the state, the scheduled retry *and* the rendered headline; `submissionHeadline` is computed from the state, so no caller can pass a nicer word |
+| Updating a document after submission provably does not alter the snapshot; the original payload still reproduces and its hash still verifies | **Done** — the test uploads a replacement version after submitting and byte-compares the regenerated payload |
+| The submitted payload can be regenerated from the snapshot and byte-compared against what was sent | **Done** — `canonicalJson` makes the bytes a function of the values rather than of key order; the student can read the exact bytes and both fingerprints on their own receipt page |
+| A requirement change between `draft` and submission blocks the submission with a specific, actionable explanation | **Done** — what the student was shown is recorded as `(requirementId, version)` pairs at `ready` and compared at submission. Added, changed and removed all block, and the explanation quotes both wordings |
+| Connector contract tests run against a sandbox or recorded fixture for each adapter, in CI | **Done** — 25 tests over all five adapters against recorded fixtures, in the ordinary unit run |
+| An unscanned or quarantined document cannot reach any connector — proven by test at the adapter boundary | **Done** — enforced in `PayloadBuilderService`, which is the only thing that builds a connector request, and doubled: the version is re-read and re-checked either side of `resolveForConnector` |
+| Chaos test: connector outage during submission leaves no application in a state that misinforms the student | **Done** — timeout, connection reset, an adapter that throws, and six exhausted attempts. The last leaves the application in `submitted_pending`, not `failed`: after six timeouts we do not know whether the university has it, and "failed" would be a claim we cannot support either |
+| Full correlation-ID trace retrievable for any submission, from click to external call | **Done** — `GET /v1/applications/:id/trace`, built from the correlation IDs on the attempt rows rather than from one request's, because a submission spans several |
+
+## Decisions worth recording
+
+**A snapshot backs a submission, not a network call.** Retrying a timeout
+re-sends the same bytes under the same partner key and shares one snapshot;
+resubmitting after a rejection builds a new payload and gets the next
+submission number. Collapsing the two would mean either that a retry could
+carry different bytes from the attempt it was retrying — making
+"reproducible" true of some attempts and not others — or that a genuine
+resubmission would be deduplicated away at the university.
+
+**The receipt rule is one function.** `isReceipt(outcome)` is the sole route to
+`submitted`, and the outcome type makes an accepted result with no reference
+unrepresentable. A 200 with an empty body is a `retryable_failure`, not a
+success: a partner who accepted the application but could not say so has given
+us nothing we can show a student.
+
+**Two idempotency keys, on purpose.** The client's `Idempotency-Key` header
+stops a duplicate *request*. The key sent to the university is derived from the
+snapshot and stops a duplicate *application at the university*. They are
+different mechanisms guarding different failures, and a single key would guard
+only the first.
+
+**Consent is three separate grants.** `SUBMISSION_CONSENTS` is enforced by the
+API before a payload is built, not just rendered as three checkboxes. Revoking
+"let the university contact me" does not revoke "send this application", which
+a single bundled grant would have made impossible.
+
+**An operator-assisted submission cannot invent a receipt.** The adapter has no
+path that returns `accepted`, so no amount of operator confidence moves an
+application to `submitted` without the university's own reference. It refuses
+outright without an identified human, and the resulting `<DisclosureNotice>` is
+permanent rather than dismissible.
+
+**Every inbound event is kept, including the ones that changed nothing.** A
+student disputing a decision needs the whole sequence, not the subset we acted
+on, so an out-of-order or duplicate event is stored with the reason it did not
+apply. Events are attributed to the university in the UI, never to Modex.
+
+**Replay safety needs both halves.** The unique index on
+`(connectorId, providerEventId)` stops a duplicate delivery; the timestamp
+inside the signed material stops a captured request being replayed later under
+a fresh id. Neither does the other's job.
+
+## Deviations from the issue, and why
+
+**1. "A real partner connector" is a scripted one.** No university has an
+endpoint pointed at this repository, so the end-to-end criterion is met against
+`ScriptedConnector` in the integration harness and against recorded fixtures in
+the adapter contract tests. What is genuinely proven is everything on our side
+of the boundary; what is not is any particular partner's JSON. The adapter
+boundary is the deliverable, and the fixtures are what a pilot partner's
+responses get dropped into.
+
+**2. `more_info` is reachable from `under_review` only.** The TRD's table says
+so, and this build follows it rather than widening the machine. The consequence
+is real and worth naming: a partner who sends `more_info_required` straight
+after `received` has the event stored with "an application cannot go from
+submitted to more_info" and no task is opened for the student. That is visible
+in the audit trail and on the application, rather than silent — but a pilot
+partner that behaves this way is a reason to revisit the table, not to patch
+around it at the call site.
+
+**3. Duplicate applications "where partner rules allow" are not built.**
+`@@unique([studentId, intakeId])` holds one application per student per intake,
+in the database rather than in a service check two concurrent requests can both
+pass. The escape hatch needs a per-partner policy *and* a rule for which of the
+duplicates an inbound status event belongs to, and guessing at the second now
+would be guessing. A different intake of the same programme is a different row
+and is allowed today.
+
+**4. Messaging-style polling, again, for connectors without webhooks.**
+`StatusPollService` is rate-limited from each partner's own
+`pollIntervalSeconds`, floored at a minute, and claims `lastPolledAt` before
+the work so two overlapping sweeps cannot both decide a partner is due. Events
+it discovers go through exactly the same `InboundStatusService.apply` a webhook
+would use — there is no second path into the state machine.
+
+**5. 21st.dev blocks are rebuilt, not installed** — for the third phase
+running, and for the Phase 2 reason: the account is free-tier and the code that
+comes back is Tailwind + Radix, which `check:vendor-hex` fails the build on.
+The one pick that genuinely could not have been installed anyway is
+`@ddoemonn/task-steps` for the status timeline: the vendor block has no concept
+of "awaiting external confirmation" and no concept of attribution, and Phase 4
+needs both.
+
+## Gaps, and why
+
+**No partner sandbox in CI.** Contract tests run against recorded fixtures. A
+partner sandbox, when one exists, is a URL and a credential — the tests are
+already written against the shape rather than the transport.
+
+**The file-exchange connector writes a package but nothing collects it.** The
+package lands in object storage in canonical form, byte-identical to what the
+snapshot hashes. The SFTP drop, the schedule and the partner's collection are
+infrastructure this environment has none of.
+
+**Still no scheduler.** Phase 2 recorded this and Phase 4 adds two more
+consumers: `connector-submission` retries and `connector-poll`. Both workers
+are registered and both handlers are idempotent, but nothing triggers the poll
+periodically, so it is manual today. This is now the single most load-bearing
+absence in the repository — a submission retry that never fires leaves an
+application in `submitted_pending` indefinitely.
+
+**Downloadable submission summary is a page, not a file.** The receipt page
+renders the exact canonical bytes and both fingerprints, which is the
+inspectable half. A signed PDF or JSON download is not built.
+
+**Still no automated axe run.** Fourth phase running. The contrast budget covers
+the eleven new pairings, the submission states carry words as well as colours,
+and the timeline puts its state in the accessible name — but nobody has run axe
+over a rendered page in CI.
+
+## Bugs found while testing
+
+**An FK cascade fires the child's row triggers, which would have made an
+application undeletable.** `ApplicationSnapshot` started with an
+`applicationId` foreign key and the append-only trigger `audit_events` uses.
+Probed against a real PostgreSQL rather than assumed: a referential
+`ON DELETE CASCADE` runs a genuine DELETE against the child, the trigger fires,
+and `DELETE FROM applications` fails — as does any `TRUNCATE ... CASCADE`
+upstream, which is how the test suite resets. The append-only guarantee would
+have quietly become "no application can ever be erased". The snapshot now holds
+no foreign keys at all, which is the same conclusion `message_flags` reached one
+phase earlier from the other direction.
+
+**"Mark the application ready again" was impossible to follow.** When a
+requirement drifts, the submission is blocked and the student is told to mark
+the application ready again — but the application is already `ready`, and
+`markReady` refused it as a same-state transition. A dead end reachable by
+following our own instruction. `markReady` on a `ready` application is now the
+re-acknowledgement path: nothing moves, and what the student has been shown is
+brought up to date.
+
+**An asynchronous connector could never be confirmed.** A portal handoff has no
+university reference until the university sends one — and `InboundStatusService`
+found the application *by* that reference, so the first event could never be
+attributed. The event schema now carries an optional `modexRef`, the token we
+put in the partner's continuation URL or package, and the confirming event is
+what writes their reference onto the application.
+
+**Only the pipeline could mark a submission confirmed.** `TRANSITION_AUTHORITY`
+gave `submitted` to `system` alone, which locked out the one actor whose word is
+the evidence: an inbound university receipt. Widened to `university`, with the
+rule that actually matters left intact and tested — the *applicant* can never
+declare it.
+
+**An operator could submit but not read back what they had done.**
+`ApplicationsService.detail` was owner-scoped, so the operator-assisted path
+threw `not_found` at the end of its own successful submission. Reading and
+acting are now separate checks, with the organisation boundary applied to staff
+rather than inferred from the role.
+
+**Operator-assisted copy never named the university.** Caught by the contract
+test asserting every connector description names the institution: the one route
+where a human at Modex handles a student's documents was the one route that did
+not say who they were sending them to.
+
+## What Phase 5 and Phase 6 get from this
+
+- **Phase 5 (#7)** — offers. `Application.state` reaches `offer`, `accepted`,
+  `declined` and `expired` already, and the transitions out of `offer` are
+  authority-checked. The offer *object* is Phase 5's; nothing here stores an
+  offer's terms.
+- **Phase 6 (#8)** — admin portals. `ApplicationsService.trace` is the audit
+  console's read model, `SubmissionAttempt` and `ApplicationStatusEvent` are
+  the ops queue, and `ConnectorConfig` is what the partner console edits.
+  Operator-assisted submission already writes its disclosure; the console that
+  triages a dead-lettered submission is Phase 6's.

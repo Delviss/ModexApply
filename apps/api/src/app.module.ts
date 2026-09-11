@@ -17,6 +17,8 @@ import { MessagingModule } from './messaging/messaging.module.js';
 import { SessionsModule } from './sessions/sessions.module.js';
 import { TrustModule } from './trust/trust.module.js';
 import { QaModule } from './qa/qa.module.js';
+import { ApplicationsModule } from './applications/applications.module.js';
+import { ConnectorsModule } from './connectors/connectors.module.js';
 import { WorkersModule } from './workers/workers.module.js';
 import { HealthModule } from './health/health.module.js';
 import { AllExceptionsFilter } from './common/errors/exception.filter.js';
@@ -48,6 +50,8 @@ import { loadEnv } from './config/env.js';
     SessionsModule,
     TrustModule,
     QaModule,
+    ApplicationsModule,
+    ConnectorsModule,
     WorkersModule,
     HealthModule,
   ],
