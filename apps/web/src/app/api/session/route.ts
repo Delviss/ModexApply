@@ -13,14 +13,17 @@ import { SESSION_COOKIE } from '@/lib/session';
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const body: unknown = await request.json();
-    const session = await apiSend<{ accessToken: string; expiresIn?: number }>(
-      'POST',
-      '/auth/login',
-      '',
-      body,
-    );
+    const session = await apiSend<{
+      accessToken: string;
+      expiresIn?: number;
+      mfaRequired: boolean;
+    }>('POST', '/auth/login', '', body);
 
-    const response = NextResponse.json({ ok: true });
+    // `mfaRequired` is passed back so the form knows to go to the challenge
+    // rather than the dashboard. The cookie is set either way: a staff session
+    // that has not cleared MFA can reach exactly one route — the challenge —
+    // and nothing else, which is enforced by the API's guard rather than here.
+    const response = NextResponse.json({ ok: true, mfaRequired: session.mfaRequired === true });
     response.cookies.set({
       name: SESSION_COOKIE,
       value: session.accessToken,

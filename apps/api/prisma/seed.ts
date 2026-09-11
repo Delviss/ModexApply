@@ -8,14 +8,69 @@
  * environment full of institutions that could never have been verified in
  * production.
  */
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type Role } from '@prisma/client';
+import * as argon2 from 'argon2';
+import { MfaService } from '../src/auth/mfa.service.js';
+import { loadEnv } from '../src/config/env.js';
 
 const prisma = new PrismaClient();
 
 const DOMAIN = 'example.ac.uk';
 
+/**
+ * Development credentials.
+ *
+ * Every seeded account signs in with the same password and, for staff, the same
+ * TOTP secret. Both are printed at the end of the seed and both are useless
+ * anywhere real: the password fails the policy nowhere, but the secret is
+ * sealed with `MFA_SECRET_KEY`, and no deployed environment shares the local
+ * development key.
+ *
+ * Before this, every seeded user had a null `passwordHash` — the fixtures
+ * described a platform nobody could sign in to.
+ */
+const DEV_PASSWORD = 'ModexDev!Passw0rd';
+
+/** A fixed base32 secret, so `oathtool --totp -b <secret>` produces a working code. */
+const DEV_TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+
+const mfa = new MfaService(loadEnv().MFA_SECRET_KEY);
+
 async function main(): Promise<void> {
   console.warn('Seeding development fixtures...');
+
+  const passwordHash = await argon2.hash(DEV_PASSWORD);
+  const sealedSecret = mfa.seal(DEV_TOTP_SECRET);
+
+  /**
+   * A staff account, enrolled in MFA.
+   *
+   * Staff roles cannot sign in without a second factor — that is the Phase 0
+   * rule and Phase 6 depends on it — so the seed enrols one rather than leaving
+   * every console unreachable in development.
+   */
+  async function staff(input: {
+    email: string;
+    displayName: string;
+    role: Role;
+    organisationId?: string;
+  }) {
+    return prisma.user.create({
+      data: {
+        email: input.email,
+        displayName: input.displayName,
+        status: 'active',
+        emailVerifiedAt: new Date(),
+        passwordHash,
+        mfaEnrolledAt: new Date(),
+        mfaSecretRef: sealedSecret,
+        organisationId: input.organisationId ?? null,
+        roles: {
+          create: { role: input.role, scopeId: input.organisationId ?? null },
+        },
+      },
+    });
+  }
 
   const institution = await prisma.institution.create({
     data: {
@@ -226,7 +281,17 @@ async function main(): Promise<void> {
       displayName: 'Ada Bello',
       status: 'active',
       emailVerifiedAt: new Date(),
+      passwordHash,
       roles: { create: { role: 'student' } },
+      consents: {
+        create: {
+          // So the Phase 6 support-impersonation flow is demonstrable without
+          // hand-inserting a consent row. Revoking it from the privacy page
+          // ends support access on the operator's next request.
+          scope: 'support_access',
+          noticeVersion: 'support-access-v1',
+        },
+      },
       studentProfile: {
         create: {
           nationality: 'NG',
@@ -330,6 +395,7 @@ async function main(): Promise<void> {
         displayName: input.displayName,
         status: 'active',
         emailVerifiedAt: new Date(),
+        passwordHash,
         roles: { create: { role: 'guide' } },
       },
     });
@@ -624,6 +690,100 @@ async function main(): Promise<void> {
     },
   });
 
+  // -------------------------------------------------------------------------
+  // Phase 6 — the four consoles need people to open them
+  // -------------------------------------------------------------------------
+
+  const registrar = await staff({
+    email: `admin@${DOMAIN}`,
+    displayName: 'R. Adeyemi (Registrar)',
+    role: 'university_admin',
+    organisationId: institution.id,
+  });
+  await staff({
+    email: `admissions@${DOMAIN}`,
+    displayName: 'J. Ferreira (Admissions)',
+    role: 'university_staff',
+    organisationId: institution.id,
+  });
+  await staff({ email: 'trust@modex.test', displayName: 'M. Haddad (Trust)', role: 'trust_agent' });
+  await staff({ email: 'ops@modex.test', displayName: 'S. Nowak (Operations)', role: 'ops' });
+
+  // Two finance accounts, deliberately. One cannot demonstrate the rule that a
+  // high-value payout needs a second actor, and a rule nobody can see working
+  // is a rule somebody eventually removes.
+  await staff({ email: 'finance1@modex.test', displayName: 'T. Okafor (Finance)', role: 'finance' });
+  await staff({ email: 'finance2@modex.test', displayName: 'L. Marchetti (Finance)', role: 'finance' });
+
+  // A completed session and the reward it earned, so the finance queue has a
+  // payout to start. The amount is over the dual-approval threshold on purpose.
+  const completedSession = await prisma.guideSession.create({
+    data: {
+      studentId: student.id,
+      guideId: activeGuide.id,
+      channel: 'video',
+      scheduledFor: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      durationMinutes: 30,
+      status: 'completed',
+      completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000),
+      topics: ['accommodation'],
+      rewardState: 'earned',
+    },
+  });
+  await prisma.guideRewardEntry.create({
+    data: {
+      guideId: activeGuide.id,
+      sessionId: completedSession.id,
+      kind: 'fixed_stipend',
+      state: 'earned',
+      amountMinor: 25_000,
+      currency: 'GBP',
+      earnedAt: new Date(),
+      note: 'Session delivered. Nothing here depends on whether the student was admitted.',
+    },
+  });
+
+  // A service payment, so the refund path has something legitimate to run
+  // against — and nothing resembling tuition, which Modex never holds.
+  await prisma.modexTransaction.create({
+    data: {
+      kind: 'service_payment',
+      state: 'settled',
+      amountMinor: 4_900,
+      currency: 'GBP',
+      externalRef: 'dev-payment-0001',
+      subjectUserId: student.id,
+      description: 'Modex application support — one-off service fee',
+      correlationId: 'seed',
+      settledAt: new Date(),
+    },
+  });
+
+  await prisma.notificationTemplate.createMany({
+    data: [
+      {
+        key: 'application.submitted',
+        channel: 'email',
+        locale: 'en',
+        subject: 'Your application has reached {{institutionName}}',
+        body:
+          'Hello {{studentName}},\n\n{{institutionName}} has your application for {{programName}}. ' +
+          'Your reference is {{applicationRef}}.\n\nYou can follow it at {{supportUrl}}.',
+        updatedBy: registrar.id,
+      },
+      {
+        key: 'document.quarantined',
+        channel: 'email',
+        locale: 'en',
+        subject: 'One of your documents could not be accepted',
+        body:
+          'Hello {{studentName}},\n\nA file you uploaded did not pass our safety scan and has not ' +
+          'been shared with anyone. Upload a replacement at {{supportUrl}}.',
+        updatedBy: registrar.id,
+      },
+    ],
+  });
+
   console.warn(
     `Seeded: ${institution.displayName} (verified, 2 programmes), ` +
       'Northern Institute of Technology (mid-onboarding), and ' +
@@ -634,6 +794,24 @@ async function main(): Promise<void> {
   );
   console.warn(
     'Run `pnpm --filter @modex/api exec tsx prisma/reindex.ts` to build the search index.',
+  );
+  console.warn(
+    [
+      '',
+      'Development sign-in:',
+      `  password for every account: ${DEV_PASSWORD}`,
+      `  staff TOTP secret (base32): ${DEV_TOTP_SECRET}`,
+      '    → oathtool --totp -b ' + DEV_TOTP_SECRET,
+      '',
+      '  student            ada@example.com',
+      `  university admin   admin@${DOMAIN}        → /admin/university`,
+      `  university staff   admissions@${DOMAIN}`,
+      '  trust agent        trust@modex.test        → /admin/trust',
+      '  operations         ops@modex.test          → /admin/ops',
+      '  finance (two)      finance1@modex.test, finance2@modex.test → /admin/finance',
+      '',
+      'Staff accounts need the six-digit code at sign-in and again on entering a console.',
+    ].join('\n'),
   );
 }
 

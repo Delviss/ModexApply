@@ -29,8 +29,20 @@ const stripped = source
   .replace(/ as const/g, '');
 const names = [...source.matchAll(/export const (\w+)\s*=/g)].map((m) => m[1]);
 const evaluate = new Function(`${stripped}\nreturn { ${names.join(', ')} };`);
-const { brand, neutral, semantic, dark, dataviz, typography, space, radius, elevation, motion, focus } =
-  evaluate();
+const {
+  brand,
+  neutral,
+  semantic,
+  dark,
+  dataviz,
+  typography,
+  space,
+  radius,
+  elevation,
+  scrim,
+  motion,
+  focus,
+} = evaluate();
 
 const lines = [];
 const push = (line = '') => lines.push(line);
@@ -102,6 +114,7 @@ for (const [key, value] of Object.entries(radius)) push(`  --mx-radius-${key}: $
 push();
 push('  /* Elevation — three levels, warm-tinted shadows */');
 for (const [key, value] of Object.entries(elevation)) push(`  --mx-shadow-${key}: ${value};`);
+push(`  --mx-scrim: ${scrim.light};`);
 push();
 push('  /* Motion */');
 push(`  --mx-motion-fast: ${motion.fast};`);
@@ -150,6 +163,7 @@ const darkBlock = [
   '',
   ...dataviz.categoricalDark.map((hex, i) => `  --mx-viz-${i + 1}: ${hex};`),
   '',
+  `  --mx-scrim: ${scrim.dark};`,
   '  --mx-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);',
   '  --mx-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.5);',
   '  --mx-shadow-3: 0 16px 40px rgba(0, 0, 0, 0.6);',

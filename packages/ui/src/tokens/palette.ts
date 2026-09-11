@@ -144,6 +144,18 @@ export const radius = {
   pill: '9999px',
 } as const;
 
+/**
+ * The scrim behind a modal (Phase 6).
+ *
+ * Warm-tinted like the shadows, and darker in the dark theme rather than
+ * lighter: a scrim's job is to push the page behind it out of reading range,
+ * and a dark surface needs more separation to do that, not less.
+ */
+export const scrim = {
+  light: 'rgba(48, 10, 17, 0.45)',
+  dark: 'rgba(0, 0, 0, 0.65)',
+} as const;
+
 /** Three levels only, warm-tinted — no pure-black shadows against a warm palette. */
 export const elevation = {
   1: '0 1px 2px rgba(48, 10, 17, 0.06)',

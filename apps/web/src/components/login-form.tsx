@@ -41,13 +41,28 @@ export function LoginForm({ next }: LoginFormProps) {
         body: JSON.stringify({ email, password }),
       });
 
+      const body = (await response.json().catch(() => null)) as
+        | { error?: { message?: string }; mfaRequired?: boolean }
+        | null;
+
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as
-          | { error?: { message?: string } }
-          | null;
         // Deliberately not "no account with that email": that distinction tells
         // an attacker which addresses are registered here.
         throw new Error(body?.error?.message ?? 'That email and password did not match.');
+      }
+
+      // A staff session is not usable until the second factor is cleared, so
+      // there is no point sending them to a dashboard that will refuse them.
+      //
+      // `next` is only forwarded when the caller actually asked for somewhere:
+      // defaulting it to `/dashboard` would send every administrator to the
+      // student dashboard, where their roles hold no `profile:read` and the
+      // first thing they see is an error page.
+      if (body?.mfaRequired === true) {
+        const target = next === undefined ? '/login/mfa' : `/login/mfa?next=${encodeURIComponent(safeNext(next))}`;
+        router.push(target);
+        router.refresh();
+        return;
       }
 
       router.push(safeNext(next));
