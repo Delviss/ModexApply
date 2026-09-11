@@ -19,9 +19,11 @@ See [issue #1](https://github.com/Delviss/ModexApply/issues/1) for the delivery 
 ```
 apps/
   api/           NestJS + Prisma — platform core, catalogue, search, vault,
-                 eligibility, the guide network and the anti-scam pipeline
+                 eligibility, the guide network, the anti-scam pipeline,
+                 applications and the university connector layer
   web/           Next.js — public pages, catalogue admin, student workspace,
-                 guide directory, messaging and the public Q&A
+                 guide directory, messaging, the public Q&A, the application
+                 wizard and the submission tracker
 packages/
   contracts/     Shared domain contracts (money, errors, access, provenance…)
   ui/            Red Velvet design system — tokens, blocks, signature components
@@ -57,10 +59,17 @@ Two of those gates are unusual and deliberate:
 
 ## Status
 
-Phases 0 to 3 of the epic. See [docs/phases.md](docs/phases.md) for what is
+Phases 0 to 4 of the epic. See [docs/phases.md](docs/phases.md) for what is
 built, what is deliberately deferred, and why.
 
-Phase 2 adds the student half of the loop: a reusable profile, a versioned
-document vault that will not release an unscanned file, catalogue search whose
-ranking explains itself, and an eligibility engine that answers with a reason
-rather than a verdict.
+Phase 4 is the core of the product: an application goes out through a
+university-approved route, and what was sent is frozen as a reproducible,
+hash-verifiable snapshot. One rule shapes all of it —
+
+> A submission is not successful because Modex generated a payload. It is
+> successful only after the university confirms receipt and returns a durable
+> reference.
+
+— which is why there is a `submitted_pending` state, why it never renders the
+word "Submitted", and why the only route to `submitted` runs through a
+reference the university gave us.

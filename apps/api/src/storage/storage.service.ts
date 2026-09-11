@@ -115,6 +115,30 @@ export class StorageService {
     if (!response.ok) return null;
     return Buffer.from(await response.arrayBuffer());
   }
+
+  /**
+   * Writes an object the platform generated itself.
+   *
+   * Deliberately *not* a path for anything a student uploaded — those go
+   * straight to storage over a signed PUT and never pass through this process.
+   * This exists for the file-exchange connector's package, which is built here
+   * from data we already hold, and for nothing else so far.
+   */
+  async putObject(key: string, body: Buffer, contentType: string): Promise<void> {
+    const signed = this.signUrl('PUT', key, { ttlSeconds: 60, contentType });
+    const response = await fetch(signed.url, {
+      method: 'PUT',
+      headers: { 'content-type': contentType },
+      body: new Uint8Array(body),
+    });
+    if (!response.ok) {
+      throw new AppError(
+        'dependency_unavailable',
+        'The document store did not accept the object.',
+        { details: { status: response.status } },
+      );
+    }
+  }
 }
 
 function deriveSignature(

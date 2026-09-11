@@ -11,7 +11,11 @@ import { loadEnv } from './config/env.js';
  */
 async function bootstrap(): Promise<void> {
   const env = loadEnv();
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // `rawBody` keeps the exact bytes a partner signed. Verifying a signature
+  // against a re-serialised body would mean a partner's key ordering could
+  // change the signature without changing the request — which is how webhook
+  // verification quietly stops working for one partner and nobody notices.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
 
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
   app.enableCors({

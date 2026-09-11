@@ -3,6 +3,8 @@ import { QUEUES, QueueService } from '../queue/queue.service.js';
 import { IndexerService } from '../search/indexer.service.js';
 import { DocumentsService } from '../documents/documents.service.js';
 import { ReverificationService } from '../guides/reverification.service.js';
+import { SubmissionService } from '../applications/submission.service.js';
+import { StatusPollService } from '../connectors/status-poll.service.js';
 
 export interface ReindexPayload {
   programKey: string;
@@ -21,6 +23,17 @@ export interface PartnershipCascadePayload {
   institutionId: string;
   partnershipId: string;
   reason: string;
+}
+
+export interface SubmissionRetryPayload {
+  applicationId: string;
+  snapshotId: string;
+  submissionNo: number;
+  attemptNo: number;
+}
+
+export interface ConnectorPollPayload {
+  now?: string;
 }
 
 /**
@@ -45,6 +58,8 @@ export class WorkersService implements OnModuleInit {
     private readonly indexer: IndexerService,
     private readonly documents: DocumentsService,
     private readonly reverification: ReverificationService,
+    private readonly submissions: SubmissionService,
+    private readonly statusPoll: StatusPollService,
   ) {}
 
   onModuleInit(): void {
@@ -81,8 +96,28 @@ export class WorkersService implements OnModuleInit {
       );
     });
 
+    // Phase 4. The retry is what keeps a timed-out submission from sitting in
+    // `submitted_pending` forever, and it is idempotent twice over: it no-ops
+    // if a webhook confirmed the submission first, and the partner key it
+    // re-sends is derived from the snapshot rather than from this job.
+    this.queue.register<SubmissionRetryPayload>(QUEUES.connectorSubmission, async (payload) => {
+      await this.submissions.retry(
+        payload.applicationId,
+        payload.snapshotId,
+        payload.submissionNo,
+        payload.attemptNo,
+      );
+    });
+
+    // The fallback for partners with no webhooks. Rate-limited per partner
+    // inside the sweep, from their own `pollIntervalSeconds`.
+    this.queue.register<ConnectorPollPayload>(QUEUES.connectorPoll, async (payload) => {
+      await this.statusPoll.sweep(payload.now === undefined ? new Date() : new Date(payload.now));
+    });
+
     this.logger.log(
-      'Registered workers for search-index, document-scan, guide-reverification and partnership-cascade',
+      'Registered workers for search-index, document-scan, guide-reverification, ' +
+        'partnership-cascade, connector-submission and connector-poll',
     );
   }
 }

@@ -456,6 +456,62 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     implementation: 'ScanStatePill',
     note: 'The vendor block ships success and error only; a quarantined file needs a permanently blocked state, which is added here.',
   },
+
+  // Phase 4 (#6) archetypes — applications, snapshots and the connector layer.
+  {
+    registry: '@ddoemonn/task-steps',
+    name: 'Task Steps (application status timeline)',
+    section: 'data-display',
+    primary: true,
+    status: 'implemented',
+    implementation: 'ApplicationTimeline',
+    note: 'Rebuilt rather than reused. The vendor block has no concept of “awaiting external confirmation” and no concept of attribution — and Phase 4 needs both: submitted_pending is its own visual state, and an event the university reported has to read as theirs rather than as ours.',
+  },
+  {
+    registry: '@7ovr/team-members-data-table',
+    name: 'Applications Data Table',
+    section: 'data-display',
+    primary: true,
+    status: 'implemented',
+    implementation: 'DataTable (applications overview)',
+    note: 'University, programme, status, deadline and next action, over the Phase 0 data table rather than a second one. Row menus dropped: every action on an application is consequential enough to deserve the page rather than a hover menu.',
+  },
+  {
+    registry: '@shadcnui-blocks/pagination-14',
+    name: 'Table Pagination (applications)',
+    section: 'data-display',
+    primary: false,
+    status: 'implemented',
+    implementation: 'Pagination',
+    note: 'Same pagination as the catalogue. A student with more applications than one page is rare, and a second pagination component for that case would not be.',
+  },
+  {
+    registry: '@hero_ui/heroui-table',
+    name: 'HeroUI Table (document versions in review)',
+    section: 'data-display',
+    primary: false,
+    status: 'implemented',
+    implementation: 'DataTable + ScanStatePill (review step)',
+    note: 'Version, checksum and scan state per document on the review step. Expandable rows dropped: there are four columns, and hiding the checksum behind a disclosure defeats the reason it is shown.',
+  },
+  {
+    registry: '@cnippet-dev/cnippet-empty',
+    name: 'Empty (no applications yet)',
+    section: 'data-display',
+    primary: false,
+    status: 'implemented',
+    implementation: 'EmptyState',
+    note: 'Reuses the Phase 0 empty state.',
+  },
+  {
+    registry: '@cnippet-dev/v-skeleton-8',
+    name: 'Sidebar Dashboard Skeleton',
+    section: 'data-display',
+    primary: false,
+    status: 'implemented',
+    implementation: 'Skeleton',
+    note: 'Loading state for the applications list, built on the Skeleton primitive.',
+  },
 ]);
 
 export function blocksByStatus(status: BlockStatus): readonly BlockEntry[] {

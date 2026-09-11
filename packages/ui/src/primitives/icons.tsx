@@ -37,6 +37,13 @@ export const CheckIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const CopyIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="9" y="9" width="12" height="12" rx="2" />
+    <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+  </Icon>
+);
+
 export const ShieldCheckIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
