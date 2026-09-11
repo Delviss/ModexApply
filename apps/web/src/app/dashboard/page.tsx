@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Alert, Card, CardHeader, CompletenessMeter, EmptyState, StatCard } from '@modex/ui';
-import type { ProfileCompleteness, StudentProfile } from '@modex/contracts';
+import { formatMoney, money, type ProfileCompleteness, type StudentProfile } from '@modex/contracts';
 import { ApiError, apiGetAs } from '@/lib/api';
 import { sessionToken } from '@/lib/session';
 
@@ -27,6 +27,11 @@ interface ApplicationSummary {
   nextAction: string | null;
 }
 
+interface SavingsSummary {
+  realisedCount: number;
+  byCurrency: { currency: string; total: { amountMinor: number; currency: string } }[];
+}
+
 /**
  * The student dashboard (Phase 2 design spec).
  *
@@ -41,10 +46,15 @@ export default async function DashboardPage() {
   let data: ProfileResponse;
   let documents: VaultDocument[] = [];
   let applications: ApplicationSummary[] = [];
+  let savings: SavingsSummary | null = null;
   try {
     data = await apiGetAs<ProfileResponse>('/me/profile', token);
     documents = (await apiGetAs<{ data: VaultDocument[] }>('/documents', token)).data;
     applications = (await apiGetAs<{ data: ApplicationSummary[] }>('/applications', token)).data;
+    // The savings tile is the one thing on this page that may be absent without
+    // the page being wrong, so its failure is caught separately rather than
+    // taking the dashboard down with it.
+    savings = await apiGetAs<SavingsSummary>('/reports/savings', token).catch(() => null);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) redirect('/login?next=/dashboard');
     throw error;
@@ -98,7 +108,25 @@ export default async function DashboardPage() {
           value={<Link href="/messages">Your messages</Link>}
           caption="Verified current students, never university staff"
         />
-        <StatCard label="Offers" value={0} caption="Offers arrive with Phase 5" />
+        <StatCard
+          label="Savings secured"
+          value={
+            <Link href="/savings">
+              {savings === null || savings.byCurrency.length === 0
+                ? '—'
+                : savings.byCurrency
+                    .map((entry) =>
+                      formatMoney(money(entry.total.amountMinor, entry.total.currency)),
+                    )
+                    .join(' · ')}
+            </Link>
+          }
+          caption={
+            savings === null || savings.realisedCount === 0
+              ? 'Counts only verified offers realised at enrolment'
+              : `${savings.realisedCount} verified offer(s) realised at enrolment`
+          }
+        />
       </div>
 
       {blockedDocuments > 0 ? (

@@ -19,6 +19,7 @@ import { TrustModule } from './trust/trust.module.js';
 import { QaModule } from './qa/qa.module.js';
 import { ApplicationsModule } from './applications/applications.module.js';
 import { ConnectorsModule } from './connectors/connectors.module.js';
+import { OffersModule } from './offers/offers.module.js';
 import { WorkersModule } from './workers/workers.module.js';
 import { HealthModule } from './health/health.module.js';
 import { AllExceptionsFilter } from './common/errors/exception.filter.js';
@@ -52,6 +53,7 @@ import { loadEnv } from './config/env.js';
     QaModule,
     ApplicationsModule,
     ConnectorsModule,
+    OffersModule,
     WorkersModule,
     HealthModule,
   ],

@@ -28,6 +28,11 @@ export const QUEUES = {
   // application in `submitted_pending`.
   connectorSubmission: 'connector-submission',
   connectorPoll: 'connector-poll',
+  // Phase 5. Separate from the freshness sweep: an offer past its validity
+  // window must come down on its own schedule, whatever the catalogue sweep is
+  // doing, because a lapsed discount is a wrong *price* rather than a stale
+  // description.
+  offerExpiry: 'offer-expiry',
   notifications: 'notifications',
 } as const;
 

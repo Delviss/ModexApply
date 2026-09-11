@@ -23,3 +23,4 @@ export * from './domain/trust.js';
 export * from './domain/qa.js';
 export * from './domain/applications.js';
 export * from './domain/connectors.js';
+export * from './domain/offers.js';

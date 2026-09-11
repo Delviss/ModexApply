@@ -248,6 +248,7 @@ model Institution {
   questions            GuideQuestion[]
   applications         Application[]
   connectors           ConnectorConfig[]
+  offers               Offer[]
 
   @@index([country])
   @@index([verificationState])
@@ -1626,13 +1627,15 @@ model Application {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  student     User                     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  institution Institution              @relation(fields: [institutionId], references: [id], onDelete: Restrict)
-  intake      Intake                   @relation(fields: [intakeId], references: [id], onDelete: Restrict)
-  connector   ConnectorConfig?         @relation(fields: [connectorId], references: [id], onDelete: SetNull)
-  tasks       ApplicationTask[]
-  attempts    SubmissionAttempt[]
-  events      ApplicationStatusEvent[]
+  student        User                     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  institution    Institution              @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  intake         Intake                   @relation(fields: [intakeId], references: [id], onDelete: Restrict)
+  connector      ConnectorConfig?         @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+  tasks          ApplicationTask[]
+  attempts       SubmissionAttempt[]
+  events         ApplicationStatusEvent[]
+  offers         ApplicationOffer[]
+  admissionOffer AdmissionOffer?
 
   /// One application per student per intake, enforced in the database rather
   /// than in a service check that two concurrent requests can both pass.
@@ -1832,4 +1835,284 @@ model ApplicationStatusEvent {
   @@index([applicationId, occurredAt])
   @@index([externalRef])
   @@map("application_status_events")
+}
+
+// ---------------------------------------------------------------------------
+// Offers, scholarships, discounts and fee waivers (Phase 5, FR-013 / FR-014)
+// ---------------------------------------------------------------------------
+//
+// Two structural decisions, both load-bearing:
+//
+//  1. **`Offer` is effective-dated, exactly like `Program`.** Editing a live
+//     offer closes the current row and writes the next version. An application
+//     that referenced version 2 keeps pointing at version 2, so a partner
+//     halving an award in June cannot retroactively change what a student was
+//     shown — and accepted — in March.
+//
+//  2. **Value is never a string.** A percentage is integer basis points, a cash
+//     award is integer minor units plus ISO 4217, and a benefit carries a named
+//     benefit and provider with no monetary value at all. There is nowhere in
+//     this schema to write "up to £5,000 off".
+
+enum OfferType {
+  scholarship
+  tuition_discount
+  application_fee_waiver
+  deposit_incentive
+  student_benefit
+}
+
+enum OfferValueKind {
+  percentage
+  fixed_amount
+  full_waiver
+  benefit_in_kind
+}
+
+/// Which cost line the offer reduces. `none` is a benefit in kind, which
+/// reduces nothing and is deliberately kept out of every net-price calculation.
+enum OfferBase {
+  tuition
+  application_fee
+  deposit
+  none
+}
+
+enum OfferDuration {
+  one_off
+  first_year
+  every_year
+}
+
+enum OfferPublicationState {
+  draft
+  in_review
+  published
+  unpublished
+  expired
+}
+
+enum OfferExclusionKind {
+  not_combinable_with_offer
+  not_combinable_with_type
+  first_year_only
+  new_students_only
+  requires_full_upfront_payment
+  excludes_programmes
+}
+
+enum OfferAttachmentState {
+  attached
+  accepted
+  declined
+  expired
+  realised
+  superseded
+}
+
+enum AdmissionOfferKind {
+  conditional
+  unconditional
+}
+
+model Offer {
+  id            String  @id @default(uuid())
+  /// Stable across every effective-dated version of the same offer.
+  offerKey      String
+  institutionId String
+  /// Null means institution-wide: every published programme, minus exclusions.
+  programKey    String?
+
+  type        OfferType
+  name        String
+  /// Value, as a discriminated set of columns rather than free JSON, so the
+  /// database refuses a percentage with no percentage and a cash award with no
+  /// currency (see the CHECK constraint in the migration).
+  valueKind   OfferValueKind
+  /// 1 = 0.01%. A 12.5% discount is 1250.
+  basisPoints Int?
+  amountMinor Int?
+  currency    String?        @db.Char(3)
+  benefit     String?
+  provider    String?
+
+  appliesTo OfferBase
+  duration  OfferDuration @default(first_year)
+
+  /// The same shape `Requirement.ruleJson` carries, as an array — the offer
+  /// conditions run through the *programme* eligibility engine. One engine.
+  conditions Json @default("[]")
+
+  /// Plain-language conditions. Never a substitute for `exclusions`, which are
+  /// their own rows precisely so stacking can be computed rather than read.
+  termsSummary      String?
+  /// How a student claims it. Mandatory for a scholarship.
+  applicationMethod String?
+  /// How a benefit is redeemed. Mandatory for a student benefit.
+  redemptionMethod  String?
+  /// The award's own deadline, which is not the intake deadline.
+  claimDeadline     DateTime?
+
+  validFrom  DateTime
+  validUntil DateTime
+
+  publicationState  OfferPublicationState @default(draft)
+  unpublishedAt     DateTime?
+  unpublishedReason String?
+
+  /// Verification (Phase 0 §2.9). `verifiedBy` and `lastCheckedAt` are what the
+  /// card requires before it will render at all.
+  verificationState VerificationState @default(unverified)
+  verifiedBy        String?
+  verifiedAt        DateTime?
+  lastCheckedAt     DateTime?
+
+  // Provenance, on this record as on every catalogue record.
+  sourceUpdatedAt DateTime?
+  expiresAt       DateTime?
+  syncState       SyncState @default(pending_review)
+  sourceRef       String?
+  reviewedBy      String?
+  staleFields     String[]
+
+  version       Int       @default(1)
+  effectiveFrom DateTime  @default(now())
+  /// Null means "current". A closed version is immutable history.
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  institution  Institution        @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  exclusions   OfferExclusion[]
+  sourceChecks OfferSourceCheck[]
+  attachments  ApplicationOffer[]
+
+  @@unique([offerKey, version])
+  @@index([institutionId, publicationState])
+  @@index([offerKey, effectiveTo])
+  @@index([programKey, publicationState])
+  /// The auto-expiry sweep's query: live offers whose window has closed.
+  @@index([publicationState, validUntil])
+  @@map("offers")
+}
+
+/// An exclusion is a row, not a sentence in the terms.
+///
+/// "Not combinable with the country award" has to be *computed* — the stacking
+/// resolver reads these and produces a stated reason for every offer it did not
+/// apply — and a human-readable summary is mandatory because an exclusion
+/// nobody can read is one that gets discovered at the worst possible moment.
+model OfferExclusion {
+  id             String             @id @default(uuid())
+  offerId        String
+  kind           OfferExclusionKind
+  /// The other offer, for `not_combinable_with_offer`.
+  otherOfferKey  String?
+  /// The other category, for `not_combinable_with_type`.
+  otherOfferType OfferType?
+  /// Programme keys carved out, for `excludes_programmes`.
+  programKeys    String[]
+  humanSummary   String
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId])
+  @@map("offer_exclusions")
+}
+
+/// One re-check of an offer against its source (TRD §6, §14).
+///
+/// Every row is a dated answer to "is this still what the university says?". A
+/// mismatch is a **trust incident**, not a data bug: the offer is unpublished,
+/// a trust case is opened, and the partner is notified — and this table is the
+/// evidence that sequence happened.
+model OfferSourceCheck {
+  id          String   @id @default(uuid())
+  offerId     String
+  checkedAt   DateTime @default(now())
+  checkedBy   String?
+  sourceRef   String
+  matched     Boolean
+  /// What the source said, when it differed. Stored verbatim, never parsed into
+  /// the offer — a mismatch is escalated, never auto-applied.
+  observed    Json     @default("{}")
+  note        String?
+  /// The case this mismatch opened, when it opened one.
+  trustCaseId String?
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, checkedAt])
+  @@index([matched])
+  @@map("offer_source_checks")
+}
+
+/// An offer attached to an application.
+///
+/// `offerId` pins the *version*, and the value columns are frozen copies taken
+/// at attachment. Both, not either: the pin is what makes the reference stable,
+/// and the frozen value is what makes a receipt reproducible even if the offer
+/// row is later removed under a retention sweep.
+model ApplicationOffer {
+  id            String               @id @default(uuid())
+  applicationId String
+  offerId       String
+  /// Denormalised so the "did this student ever hold this award?" question does
+  /// not have to walk every version of it.
+  offerKey      String
+  state         OfferAttachmentState @default(attached)
+
+  valueKind   OfferValueKind
+  basisPoints Int?
+  amountMinor Int?
+  currency    String?        @db.Char(3)
+  /// What the offer was worth against this application's own costs when it was
+  /// attached, in minor units. This is the figure the savings metric counts.
+  savingMinor Int?
+
+  attachedAt  DateTime  @default(now())
+  respondedAt DateTime?
+  expiredAt   DateTime?
+  /// Set at enrolment, and only then. "Savings secured" counts this column.
+  realisedAt  DateTime?
+  note        String?
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  offer       Offer       @relation(fields: [offerId], references: [id], onDelete: Restrict)
+
+  /// One live attachment per offer per application. A student cannot hold the
+  /// same award twice, and two concurrent requests cannot both create it.
+  @@unique([applicationId, offerKey])
+  @@index([applicationId, state])
+  @@index([offerId])
+  @@map("application_offers")
+}
+
+/// The **admission** offer: the university's decision on the application.
+///
+/// Its own table, with its own vocabulary, because the single most damaging
+/// thing this phase could do is let "you have an offer" mean a discount on a
+/// search card and an admission decision on a dashboard. Nothing joins this to
+/// `offers`, and no component takes both.
+model AdmissionOffer {
+  id            String             @id @default(uuid())
+  applicationId String             @unique
+  kind          AdmissionOfferKind
+  /// `[{ summary, met, evidence }]` — the university's conditions, as they
+  /// wrote them.
+  conditions    Json               @default("[]")
+  issuedAt      DateTime
+  /// The university's own deadline for a reply.
+  respondByAt   DateTime?
+  /// The university's reference for this decision.
+  externalRef   String?
+  notes         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([respondByAt])
+  @@map("admission_offers")
 }

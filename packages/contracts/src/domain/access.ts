@@ -71,6 +71,7 @@ export const PERMISSIONS = [
   'application:write',
   'application:submit',
   'offer:read',
+  'offer:write',
   'offer:verify',
   'audit:read',
   'user:impersonate',
@@ -133,6 +134,11 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'requirement:write',
     'application:read',
     'offer:read',
+    /**
+     * Draft an offer, yes. Publish one, no — `offer:verify` is Trust's, and it
+     * is the whole reason an unverifiable discount cannot reach a student.
+     */
+    'offer:write',
   ],
   university_admin: [
     'institution:read',
@@ -148,6 +154,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'guide:read',
     'application:read',
     'offer:read',
+    'offer:write',
   ],
   trust_agent: [
     'institution:read',
@@ -163,6 +170,12 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'qa:moderate',
     'trust_case:read',
     'trust_case:write',
+    /**
+     * Trust reads every offer, including the drafts a university has not
+     * published: verification means looking at the thing before it is visible,
+     * not after a student has already priced their year on it.
+     */
+    'offer:read',
     'offer:verify',
     'audit:read',
   ],
@@ -189,6 +202,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     // the application carries a permanent disclosure afterwards.
     'application:submit',
     'offer:read',
+    'offer:write',
     'audit:read',
   ],
   /**

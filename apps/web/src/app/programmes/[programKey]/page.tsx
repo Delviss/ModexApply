@@ -28,6 +28,7 @@ import {
   RULE_LABELS,
 } from '@/lib/labels';
 import { EligibilityPanel } from '@/components/eligibility-panel';
+import { PricePanel } from '@/components/price-panel';
 import { programmeClaim } from '@/lib/verification';
 
 /**
@@ -376,6 +377,13 @@ export default async function ProgrammePage({ params }: PageProps) {
               You pay the university directly. Modex does not add a fee to your tuition.
             </p>
           </Card>
+
+          {/*
+            The price panel sits directly under the university's own figures, and
+            after the eligibility explanation, because a net price only means
+            something once the student can see which conditions it depended on.
+          */}
+          <PricePanel programKey={programKey} />
 
           <DisclosureNotice kind="commission" />
 

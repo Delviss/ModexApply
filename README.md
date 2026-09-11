@@ -20,10 +20,10 @@ See [issue #1](https://github.com/Delviss/ModexApply/issues/1) for the delivery 
 apps/
   api/           NestJS + Prisma — platform core, catalogue, search, vault,
                  eligibility, the guide network, the anti-scam pipeline,
-                 applications and the university connector layer
+                 applications, the university connector layer and offers
   web/           Next.js — public pages, catalogue admin, student workspace,
                  guide directory, messaging, the public Q&A, the application
-                 wizard and the submission tracker
+                 wizard, the submission tracker, the price panel and savings
 packages/
   contracts/     Shared domain contracts (money, errors, access, provenance…)
   ui/            Red Velvet design system — tokens, blocks, signature components
@@ -59,7 +59,7 @@ Two of those gates are unusual and deliberate:
 
 ## Status
 
-Phases 0 to 4 of the epic. See [docs/phases.md](docs/phases.md) for what is
+Phases 0 to 5 of the epic. See [docs/phases.md](docs/phases.md) for what is
 built, what is deliberately deferred, and why.
 
 Phase 4 is the core of the product: an application goes out through a
@@ -73,3 +73,15 @@ hash-verifiable snapshot. One rule shapes all of it —
 — which is why there is a `submitted_pending` state, why it never renders the
 word "Submitted", and why the only route to `submitted` runs through a
 reference the university gave us.
+
+Phase 5 does the same thing to money. An offer is a structured object with a
+value in integer minor units, machine-readable conditions run through the *same*
+rule engine as programme eligibility, and exclusions as rows rather than as
+sentences in a terms page —
+
+> Show the real price after a discount **only when the eligibility rules are
+> satisfied.**
+
+— which is why an offer a student has not been checked against shows the gross
+price, why an offer that cannot be verified cannot be published, and why a
+displayed net price traces line by line to an offer *version* and its source.

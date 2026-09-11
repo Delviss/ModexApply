@@ -13,6 +13,7 @@ import { AppError } from '../common/errors/app-error.js';
 import { systemActor } from '../auth/audit-actor.js';
 import { currentContext } from '../common/observability/request-context.js';
 import { ApplicationStateService } from '../applications/application-state.service.js';
+import { OfferLifecycleService } from '../offers/offer-lifecycle.service.js';
 import { SECRET_RESOLVER, type SecretResolver } from './connector.port.js';
 
 export interface InboundResult {
@@ -49,6 +50,7 @@ export class InboundStatusService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly state: ApplicationStateService,
+    private readonly offers: OfferLifecycleService,
     @Inject(SECRET_RESOLVER) private readonly secrets: SecretResolver,
   ) {}
 
@@ -238,6 +240,61 @@ export class InboundStatusService {
       });
     }
 
+    // Phase 5. Two events carry offer consequences, and both are recorded from
+    // the partner's own event rather than from anything a student typed.
+    //
+    // Both are wrapped, and the wrapping is the point: the state transition
+    // above has already committed and the event is already stored, so throwing
+    // here would answer the partner with a 500 for a delivery that *worked* —
+    // and their retry would then hit a state that has already moved. An offer
+    // consequence we could not record is a logged failure to chase, never a
+    // reason to tell a university their event failed.
+    if (event.kind === 'offer_made') {
+      try {
+        // The university's admission decision — kept in its own table, with its
+        // own vocabulary. It is emphatically not a scholarship.
+        await this.offers.recordAdmissionOffer(
+          { ...systemActor(), type: 'connector' },
+          application.id,
+          {
+            kind: readAdmissionKind(event.detail),
+            conditions: readAdmissionConditions(event.detail),
+            issuedAt: event.occurredAt,
+            respondByAt: readRespondBy(event.detail),
+            externalRef: event.externalRef,
+            notes: readDetailMessage(event.detail),
+          },
+        );
+      } catch (error) {
+        this.logger.error(
+          `Could not record the admission offer on application ${application.id}: ` +
+            (error instanceof Error ? error.message : String(error)),
+        );
+      }
+    }
+
+    if (event.kind === 'enrolled') {
+      try {
+        // The one place `realisedAt` is written. "Savings secured" counts this,
+        // so it has to come from the university saying the student enrolled —
+        // never from the student accepting an award they went on not to use.
+        const realised = await this.offers.realiseAtEnrolment(
+          application.id,
+          new Date(event.occurredAt),
+        );
+        if (realised > 0) {
+          this.logger.log(
+            `Realised ${realised} offer(s) on application ${application.id} at enrolment`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `Could not realise offers on application ${application.id}: ` +
+            (error instanceof Error ? error.message : String(error)),
+        );
+      }
+    }
+
     await this.audit.record({
       actor: { ...systemActor(), type: 'connector' },
       action: 'application.status_received',
@@ -290,4 +347,51 @@ function readDetailMessage(detail: Record<string, unknown>): string {
   return typeof message === 'string' && message.trim() !== ''
     ? message.trim()
     : 'Open the application to see what the university has asked for.';
+}
+
+/**
+ * The admission offer, read out of the partner's event.
+ *
+ * Conservative on purpose: an offer whose conditions we cannot read is recorded
+ * as **conditional with no conditions listed**, never as unconditional. Guessing
+ * "unconditional" from an unparseable payload would tell a student they have a
+ * confirmed place on the strength of a field we did not understand.
+ */
+function readAdmissionKind(detail: Record<string, unknown>): 'conditional' | 'unconditional' {
+  const kind = detail.offerKind ?? detail.kind ?? detail.offerType;
+  return kind === 'unconditional' ? 'unconditional' : 'conditional';
+}
+
+function readAdmissionConditions(
+  detail: Record<string, unknown>,
+): { summary: string; met: boolean; evidence: string | null }[] {
+  const raw = detail.conditions;
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((entry) => {
+    // `>= 3` rather than `!== ''`, to match `AdmissionConditionSchema`: a reader
+    // that is laxer than the schema it feeds turns a partner's typo into a throw.
+    if (typeof entry === 'string' && entry.trim().length >= 3) {
+      return [{ summary: entry.trim(), met: false, evidence: null }];
+    }
+    if (entry !== null && typeof entry === 'object') {
+      const record = entry as Record<string, unknown>;
+      const summary = typeof record.summary === 'string' ? record.summary.trim() : '';
+      if (summary.length < 3) return [];
+      return [
+        {
+          summary,
+          met: record.met === true,
+          evidence: typeof record.evidence === 'string' ? record.evidence : null,
+        },
+      ];
+    }
+    return [];
+  });
+}
+
+function readRespondBy(detail: Record<string, unknown>): string | null {
+  const value = detail.respondBy ?? detail.respondByAt ?? detail.deadline;
+  if (typeof value !== 'string') return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }

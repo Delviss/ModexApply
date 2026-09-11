@@ -5,6 +5,7 @@ import { DocumentsService } from '../documents/documents.service.js';
 import { ReverificationService } from '../guides/reverification.service.js';
 import { SubmissionService } from '../applications/submission.service.js';
 import { StatusPollService } from '../connectors/status-poll.service.js';
+import { OfferExpiryService } from '../offers/offer-expiry.service.js';
 
 export interface ReindexPayload {
   programKey: string;
@@ -36,6 +37,11 @@ export interface ConnectorPollPayload {
   now?: string;
 }
 
+export interface OfferExpiryPayload {
+  /** Optional override, so a replayed job re-decides against its own clock. */
+  now?: string;
+}
+
 /**
  * Registers the background workers.
  *
@@ -60,6 +66,7 @@ export class WorkersService implements OnModuleInit {
     private readonly reverification: ReverificationService,
     private readonly submissions: SubmissionService,
     private readonly statusPoll: StatusPollService,
+    private readonly offerExpiry: OfferExpiryService,
   ) {}
 
   onModuleInit(): void {
@@ -115,9 +122,17 @@ export class WorkersService implements OnModuleInit {
       await this.statusPoll.sweep(payload.now === undefined ? new Date() : new Date(payload.now));
     });
 
+    // Phase 5. "An offer that expires disappears from recommendations
+    // automatically, without anyone remembering to remove it" — this
+    // registration is the "automatically". The sweep is idempotent: a replayed
+    // job finds nothing still published in the past and does nothing.
+    this.queue.register<OfferExpiryPayload>(QUEUES.offerExpiry, async (payload) => {
+      await this.offerExpiry.sweep(payload.now === undefined ? new Date() : new Date(payload.now));
+    });
+
     this.logger.log(
       'Registered workers for search-index, document-scan, guide-reverification, ' +
-        'partnership-cascade, connector-submission and connector-poll',
+        'partnership-cascade, connector-submission, connector-poll and offer-expiry',
     );
   }
 }

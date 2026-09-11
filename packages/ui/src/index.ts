@@ -88,6 +88,8 @@ export { ExpiryCountdown, type ExpiryCountdownProps } from './signature/expiry-c
 export { SubmissionState, type SubmissionStateProps } from './signature/submission-state.js';
 export { ConsentChecklist, type ConsentChecklistProps } from './signature/consent-checklist.js';
 export { ReceiptCard, type ReceiptCardProps } from './signature/receipt-card.js';
+export { OfferCard, type OfferCardProps } from './signature/offer-card.js';
+export { PriceBreakdown, type PriceBreakdownProps } from './signature/price-breakdown.js';
 export {
   ApplicationTimeline,
   spineFor,
