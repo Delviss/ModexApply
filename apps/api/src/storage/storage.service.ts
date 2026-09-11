@@ -16,7 +16,7 @@ import type { Env } from '../config/env.js';
  * S3-compatible provider in a launch market -- the region and provider are still
  * an open decision (issue #1 section 7, decision 6).
  */
-export type StorageOperation = 'PUT' | 'GET';
+export type StorageOperation = 'PUT' | 'GET' | 'DELETE';
 
 export interface SignedUrl {
   url: string;
@@ -137,6 +137,23 @@ export class StorageService {
         'The document store did not accept the object.',
         { details: { status: response.status } },
       );
+    }
+  }
+
+  /**
+   * Removes an object.
+   *
+   * Used by erasure and by the retention sweep — the two places where the
+   * platform is *supposed* to destroy something. A 404 counts as success: the
+   * goal is "this object does not exist", and it already does not.
+   */
+  async deleteObject(key: string): Promise<void> {
+    const signed = this.signUrl('DELETE', key, { ttlSeconds: 60 });
+    const response = await fetch(signed.url, { method: 'DELETE' });
+    if (!response.ok && response.status !== 404) {
+      throw new AppError('dependency_unavailable', 'The document store did not remove the object.', {
+        details: { status: response.status },
+      });
     }
   }
 }

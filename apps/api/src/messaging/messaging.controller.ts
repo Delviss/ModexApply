@@ -9,6 +9,7 @@ import { Actor } from '../auth/decorators/actor.decorator.js';
 import { RequirePermissions } from '../auth/decorators/access.decorators.js';
 import { ZodValidationPipe } from '../common/http/zod-validation.pipe.js';
 import { MessagingService } from './messaging.service.js';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator.js';
 
 const OpenSchema = z.object({
   guideId: z.uuid(),
@@ -49,6 +50,7 @@ export class MessagingController {
     return this.messaging.thread(access, id);
   }
 
+  @RateLimit(['message.send'])
   @Post('conversations/:id/messages')
   @RequirePermissions('message:write')
   async send(

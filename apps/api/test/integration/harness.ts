@@ -42,6 +42,7 @@ import { OpsConsoleService } from '../../src/admin/ops-console.service.js';
 import { FinanceConsoleService } from '../../src/admin/finance-console.service.js';
 import { SanctionsService } from '../../src/admin/sanctions.service.js';
 import { ImpersonationService } from '../../src/admin/impersonation.service.js';
+import { PrivacyService } from '../../src/privacy/privacy.service.js';
 import { TokenService } from '../../src/auth/token.service.js';
 import type { AccessContext, ConnectorType, Role, SubmissionOutcome } from '@modex/contracts';
 
@@ -160,6 +161,7 @@ export interface Harness {
   finance: FinanceConsoleService;
   sanctions: SanctionsService;
   impersonation: ImpersonationService;
+  privacy: PrivacyService;
 }
 
 /**
@@ -234,6 +236,10 @@ export class FakeStorage extends StorageService {
 
   override async fetchObject(key: string): Promise<Buffer | null> {
     return this.objects.get(key) ?? null;
+  }
+
+  override async deleteObject(key: string): Promise<void> {
+    this.objects.delete(key);
   }
 }
 
@@ -389,6 +395,7 @@ export function createHarness(prisma: PrismaClient): Harness {
     opsConsole: new OpsConsoleService(prismaService, audit),
     finance: new FinanceConsoleService(prismaService, audit),
     sanctions: new SanctionsService(prismaService, audit, guides),
+    privacy: new PrivacyService(prismaService, audit, storage),
     impersonation: new ImpersonationService(
       prismaService,
       audit,

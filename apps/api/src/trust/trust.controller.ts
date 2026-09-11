@@ -5,6 +5,7 @@ import { Actor } from '../auth/decorators/actor.decorator.js';
 import { RequirePermissions } from '../auth/decorators/access.decorators.js';
 import { ZodValidationPipe } from '../common/http/zod-validation.pipe.js';
 import { TrustService } from './trust.service.js';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator.js';
 
 const TransitionSchema = z.object({
   state: z.enum(TRUST_CASE_STATES),
@@ -23,6 +24,7 @@ const TransitionSchema = z.object({
 export class TrustController {
   constructor(private readonly trust: TrustService) {}
 
+  @RateLimit(['trust.report'])
   @Post('reports')
   @RequirePermissions('trust_case:write')
   async report(

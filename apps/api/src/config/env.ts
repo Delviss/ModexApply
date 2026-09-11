@@ -27,6 +27,17 @@ const EnvSchema = z.object({
 
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
+  /**
+   * Proxy hops in front of the API (Phase 7 §1).
+   *
+   * `X-Forwarded-For` is walked from the right by exactly this many entries to
+   * find the client address, and everything further left is ignored. The
+   * default of 1 matches a single load balancer; a deployment behind a CDN as
+   * well needs 2. Setting it too high is a rate-limit bypass, and setting it to
+   * 0 behind a proxy makes every request look like it came from the balancer.
+   */
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
+
   S3_ENDPOINT: z.string().default('http://localhost:9000'),
   S3_REGION: z.string().default('eu-west-2'),
   S3_BUCKET: z.string().default('modex-documents'),

@@ -4,6 +4,7 @@ import { CONSENT_SCOPES, STEP_UP_ACTIONS, type AccessContext } from '@modex/cont
 import { AuthService } from './auth.service.js';
 import { Actor, type AuthenticatedRequest } from './decorators/actor.decorator.js';
 import { AllowPendingMfa, Public } from './decorators/access.decorators.js';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator.js';
 import { ZodValidationPipe } from '../common/http/zod-validation.pipe.js';
 import { toAuditActor } from './audit-actor.js';
 
@@ -31,12 +32,17 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @RateLimit(['auth.register'])
   @Post('register')
   async register(@Body(new ZodValidationPipe(RegisterSchema)) body: z.infer<typeof RegisterSchema>) {
     return this.auth.register(body);
   }
 
   @Public()
+  // Two budgets, because each catches what the other misses: the email-keyed
+  // one survives an attacker rotating addresses, and the address-keyed one
+  // catches somebody spraying one password across many accounts.
+  @RateLimit(['auth.login', 'auth.login.address'], 'email')
   @Post('login')
   async login(
     @Body(new ZodValidationPipe(LoginSchema)) body: z.infer<typeof LoginSchema>,
@@ -50,6 +56,7 @@ export class AuthController {
   }
 
   @Public()
+  @RateLimit(['auth.refresh'])
   @Post('refresh')
   async refresh(@Body(new ZodValidationPipe(RefreshSchema)) body: z.infer<typeof RefreshSchema>) {
     return this.auth.refresh(body.refreshToken);
@@ -75,6 +82,7 @@ export class AuthController {
   }
 
   @AllowPendingMfa()
+  @RateLimit(['auth.mfa'])
   @Post('mfa/enrol/confirm')
   async confirmMfaEnrolment(
     @Actor() access: AccessContext,
@@ -91,6 +99,7 @@ export class AuthController {
 
   /** The login challenge. Upgrades this session to MFA-satisfied. */
   @AllowPendingMfa()
+  @RateLimit(['auth.mfa'])
   @Post('mfa/challenge')
   async challengeMfa(
     @Actor() access: AccessContext,
@@ -104,6 +113,7 @@ export class AuthController {
   }
 
   /** Step-up: the same factor, asked again, for a console or a sanction. */
+  @RateLimit(['auth.step_up'])
   @Post('step-up')
   async stepUp(
     @Actor() access: AccessContext,

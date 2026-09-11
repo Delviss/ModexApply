@@ -109,9 +109,18 @@
 .mx-button[data-variant='ghost'] { background: transparent; color: var(--mx-action); }
 .mx-button[data-variant='ghost']:hover:not(:disabled) { background: var(--mx-action-subtle); }
 
-/* Destructive uses --mx-danger, never brand crimson (Phase 0 §1.3). */
+/*
+ * Destructive uses danger, never brand crimson (Phase 0 §1.3) — and the
+ * *darker* danger, because the button label is 14px regular text.
+ *
+ * `--mx-danger` against white is 4.29:1: fine for a 3:1 fill or icon,
+ * and a real failure under a 14px label. The contrast registry declared this
+ * pairing as "large" text, which the button is not, so the gate passed while
+ * the rendered button did not. `--mx-danger-text` is 5.67:1 and looks the same
+ * shade of alarming.
+ */
 .mx-button[data-variant='destructive'] {
-  background: var(--mx-danger);
+  background: var(--mx-danger-text);
   color: var(--mx-surface);
 }
 .mx-button[data-variant='destructive']:hover:not(:disabled) { filter: brightness(0.92); }

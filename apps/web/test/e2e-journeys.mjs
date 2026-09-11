@@ -34,7 +34,13 @@ async function check(page, label) {
 
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   for (const violation of results.violations) {
-    const line = `${label}: [${violation.impact}] ${violation.id} — ${violation.help} (${violation.nodes.length} node(s))`;
+    // The node detail is printed, not just the count. A CI failure that says
+    // "1 node" and nothing else costs whoever reads it a local reproduction
+    // before they can even see what is wrong.
+    const detail = violation.nodes
+      .map((node) => `        ${node.target.join(' ')}\n          ${node.html.slice(0, 200)}`)
+      .join('\n');
+    const line = `${label}: [${violation.impact}] ${violation.id} — ${violation.help} (${violation.nodes.length} node(s))\n${detail}`;
     findings.push(line);
     if (violation.impact === 'serious' || violation.impact === 'critical') failures.push(line);
   }

@@ -8,6 +8,7 @@ import { ZodValidationPipe } from '../common/http/zod-validation.pipe.js';
 import { IdempotencyService } from '../common/idempotency/idempotency.service.js';
 import { AppError } from '../common/errors/app-error.js';
 import { ApplicationsService } from './applications.service.js';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator.js';
 
 const StartSchema = z.object({
   programKey: z.string().min(1),
@@ -86,6 +87,7 @@ export class ApplicationsController {
     return { data: await this.applications.recordConsents(access, id, body.accepted) };
   }
 
+  @RateLimit(['application.submit'])
   @Post('applications/:id/submit')
   @RequirePermissions('application:submit')
   async submit(

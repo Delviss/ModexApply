@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { createHash, randomUUID } from 'node:crypto';
 import {
+  rateLimitMessage,
   requiresMfa,
   stepUpExpiresAt,
   type ConsentScope,
+  type RateLimitName,
   type Role,
   type StepUpAction,
 } from '@modex/contracts';
@@ -13,6 +15,7 @@ import { AuditService, type AuditActor } from '../audit/audit.service.js';
 import { AppError } from '../common/errors/app-error.js';
 import { TokenService } from './token.service.js';
 import { MfaService } from './mfa.service.js';
+import { RateLimitService } from '../common/rate-limit/rate-limit.service.js';
 
 export interface Credentials {
   email: string;
@@ -49,6 +52,7 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly audit: AuditService,
     private readonly mfa: MfaService,
+    private readonly rateLimit: RateLimitService,
   ) {}
 
   async register(input: {
@@ -344,6 +348,7 @@ export class AuthService {
     if (user?.mfaSecretRef == null) {
       throw new AppError('precondition_failed', 'Start enrolment before confirming a code.');
     }
+    await this.assertCodeBudget('auth.mfa.account', userId);
     if (!this.mfa.verify(user.mfaSecretRef, code)) {
       await this.audit.record({
         actor,
@@ -389,6 +394,7 @@ export class AuthService {
     if (user?.mfaSecretRef == null || user.mfaEnrolledAt === null) {
       throw new AppError('precondition_failed', 'This account has no authenticator enrolled.');
     }
+    await this.assertCodeBudget('auth.mfa.account', input.userId);
     if (!this.mfa.verify(user.mfaSecretRef, input.code)) {
       await this.audit.record({
         actor,
@@ -445,6 +451,7 @@ export class AuthService {
         'This action needs an authenticator, and this account has none enrolled.',
       );
     }
+    await this.assertCodeBudget('auth.step_up.account', input.userId);
     if (!this.mfa.verify(user.mfaSecretRef, input.code)) {
       await this.audit.record({
         actor,
@@ -474,6 +481,23 @@ export class AuthService {
     });
 
     return { stepUpAt: stepUpAt.toISOString(), expiresAt: stepUpExpiresAt(stepUpAt) };
+  }
+
+  /**
+   * The per-account half of the code budget.
+   *
+   * The guard's address-keyed limit is sized for a shared address and cannot
+   * tell two signed-in users apart — it runs before authentication. This is the
+   * limit that actually stops somebody grinding a six-digit code, and it can
+   * only live here, where the account is known.
+   */
+  private async assertCodeBudget(name: RateLimitName, userId: string): Promise<void> {
+    const decision = await this.rateLimit.consume(name, `user:${userId}`);
+    if (!decision.allowed) {
+      throw new AppError('rate_limited', rateLimitMessage(decision), {
+        details: { retryAfterSeconds: decision.resetSeconds },
+      });
+    }
   }
 
   private async issueSession(input: {
