@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { RATE_LIMITS, rateLimitMessage, type RateLimitName } from '@modex/contracts';
 import type { Response } from 'express';
 import { AppError } from '../errors/app-error.js';
+import { metrics } from '../observability/telemetry.js';
 import type { AuthenticatedRequest } from '../../auth/decorators/actor.decorator.js';
 import { RATE_LIMIT_KEY, type RateLimitRequirement } from './rate-limit.decorator.js';
 import { RateLimitService } from './rate-limit.service.js';
@@ -47,6 +48,7 @@ export class RateLimitGuard implements CanActivate {
       response.setHeader('x-ratelimit-remaining', String(decision.remaining));
 
       if (!decision.allowed) {
+        metrics.rateLimited(name);
         response.setHeader('retry-after', String(decision.resetSeconds));
         throw new AppError('rate_limited', rateLimitMessage(decision), {
           details: { retryAfterSeconds: decision.resetSeconds },

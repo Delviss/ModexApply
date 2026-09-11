@@ -17,7 +17,8 @@
     "check:vendor-hex": "node scripts/check-vendor-hex.mjs",
     "check:migrations": "node scripts/check-migration-safety.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:contrast && pnpm check:vendor-hex && pnpm check:migrations && pnpm check:secrets && pnpm build"
+    "check:runbooks": "node scripts/check-runbooks.mjs",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:contrast && pnpm check:vendor-hex && pnpm check:migrations && pnpm check:secrets && pnpm check:runbooks && pnpm build"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

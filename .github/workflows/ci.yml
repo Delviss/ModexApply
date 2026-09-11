@@ -102,6 +102,13 @@ jobs:
       - name: Secret scan
         run: pnpm check:secrets
 
+      # Phase 7 (#9): "an alert with no runbook does not ship", enforced rather
+      # than asserted. Also refuses an alert defined over a metric nothing
+      # records — an alert that can never fire is worse than no alert, because
+      # the dashboard looks covered.
+      - name: Every alert has an owner and a runbook
+        run: pnpm check:runbooks
+
       # Destructive migrations are refused unless they declare they have been
       # through expand/contract. Blue-green means old and new code share a
       # schema for minutes at a time.
@@ -191,6 +198,79 @@ jobs:
       # the test in CI. The job prints the measured percentiles, so a run that
       # passes at 480 ms is visible before it becomes a run that fails.
       - run: pnpm --filter @modex/api test:performance
+
+  journeys:
+    name: Browser journeys and accessibility
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: modex
+          POSTGRES_PASSWORD: modex
+          POSTGRES_DB: modex
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U modex"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://modex:modex@localhost:5432/modex
+      REDIS_URL: redis://localhost:6379
+      JWT_SIGNING_KEY: ci-only-signing-key-at-least-32-characters
+      MFA_SECRET_KEY: ci-only-mfa-sealing-key-at-least-32-characters
+      # No scanner in CI, which is the fail-closed setting: uploads stay
+      # `pending` and nothing reaches a connector. The journeys do not upload.
+      MALWARE_SCANNER: none
+      API_ORIGIN: http://localhost:3001
+      PUBLIC_WEB_ORIGIN: http://localhost:3000
+      E2E_BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @modex/api prisma:generate
+      - run: pnpm --filter @modex/api prisma:migrate
+      - run: pnpm --filter @modex/api seed
+      - run: pnpm --filter @modex/api reindex
+      - run: pnpm --filter @modex/ui build
+      - run: pnpm --filter @modex/contracts build
+
+      - name: Install Chromium
+        run: pnpm --filter @modex/web exec playwright install --with-deps chromium
+
+      # A real browser against a real stack. This is the only gate that can see
+      # a page that throws after a successful step-up, or a control a screen
+      # reader announces as "button" and nothing else.
+      - name: Build and start the stack
+        run: |
+          pnpm --filter @modex/api build
+          pnpm --filter @modex/web build
+          pnpm --filter @modex/api start > /tmp/api.log 2>&1 &
+          pnpm --filter @modex/web start > /tmp/web.log 2>&1 &
+          npx --yes wait-on http://localhost:3001/v1/health/live http://localhost:3000 --timeout 180000
+
+      - name: Core journeys, with axe (WCAG 2.2 AA)
+        run: pnpm --filter @modex/web test:e2e
+
+      - name: Server logs on failure
+        if: failure()
+        run: tail -100 /tmp/api.log /tmp/web.log
 
   build:
     name: Build

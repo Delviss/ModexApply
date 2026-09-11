@@ -54,4 +54,49 @@ export const metrics = {
     sink.counter('connector.calls', 1, { connector, outcome });
     sink.histogram('connector.duration', durationMs, { connector, outcome });
   },
+
+  // -------------------------------------------------------------------------
+  // Phase 7 (#9). The signals the alerts in `infra/observability/alerts.yaml`
+  // are defined over. Each one exists because there is an alert that needs it;
+  // a metric nobody alerts on and nobody charts is a metric that rots.
+  // -------------------------------------------------------------------------
+
+  /** Submission failures are the alert TRD §22 names first, and for good reason. */
+  submissionOutcome(connector: string, outcome: 'submitted' | 'pending' | 'failed'): void {
+    sink.counter('application.submissions', 1, { connector, outcome });
+  },
+
+  /** A scan that could not decide is a document stuck out of every application. */
+  documentScan(outcome: 'clean' | 'quarantined' | 'failed'): void {
+    sink.counter('document.scans', 1, { outcome });
+  },
+
+  /** Moderation queue depth: how many people are waiting on a human. */
+  moderationQueueDepth(queue: 'trust_cases' | 'guide_verification' | 'offer_review', depth: number): void {
+    sink.gauge('moderation.queue.depth', depth, { queue });
+  },
+
+  /** Report volume, so an abnormal spike is visible as one (TRD §22). */
+  trustReportOpened(type: string, severity: string): void {
+    sink.counter('trust.reports', 1, { type, severity });
+  },
+
+  /**
+   * Authentication anomalies: failed sign-ins, failed second factors, refused
+   * step-ups, refresh-token reuse. One counter with a `kind` rather than four,
+   * because the alert is on the *shape* of the traffic, not on any one of them.
+   */
+  authAnomaly(kind: 'login_failed' | 'mfa_failed' | 'step_up_failed' | 'token_reuse'): void {
+    sink.counter('auth.anomalies', 1, { kind });
+  },
+
+  /** A request refused by a budget. A sustained rise is either an attack or a limit set too low. */
+  rateLimited(name: string): void {
+    sink.counter('ratelimit.refusals', 1, { limit: name });
+  },
+
+  /** Seconds between a catalogue write and the search index reflecting it. */
+  searchIndexLag(seconds: number): void {
+    sink.histogram('search.index.lag', seconds, {});
+  },
 };

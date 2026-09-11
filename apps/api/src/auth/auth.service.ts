@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService, type AuditActor } from '../audit/audit.service.js';
 import { AppError } from '../common/errors/app-error.js';
 import { TokenService } from './token.service.js';
+import { metrics } from '../common/observability/telemetry.js';
 import { MfaService } from './mfa.service.js';
 import { RateLimitService } from '../common/rate-limit/rate-limit.service.js';
 
@@ -115,6 +116,7 @@ export class AuthService {
       user?.passwordHash != null && (await argon2.verify(user.passwordHash, credentials.password));
 
     if (user === null || !passwordOk || user.status !== 'active') {
+      metrics.authAnomaly('login_failed');
       await this.audit.record({
         actor: {
           ...SYSTEM_ACTOR,
@@ -199,6 +201,10 @@ export class AuthService {
     }
 
     if (session.revokedAt !== null) {
+      // Token reuse is the highest-signal authentication anomaly there is: the
+      // legitimate holder and an attacker are indistinguishable at this point,
+      // and the alert should fire on the first one rather than on a trend.
+      metrics.authAnomaly('token_reuse');
       await this.prisma.session.updateMany({
         where: { familyId: session.familyId, revokedAt: null },
         data: { revokedAt: new Date() },
@@ -396,6 +402,7 @@ export class AuthService {
     }
     await this.assertCodeBudget('auth.mfa.account', input.userId);
     if (!this.mfa.verify(user.mfaSecretRef, input.code)) {
+      metrics.authAnomaly('mfa_failed');
       await this.audit.record({
         actor,
         action: 'user.mfa_challenge_failed',
@@ -453,6 +460,7 @@ export class AuthService {
     }
     await this.assertCodeBudget('auth.step_up.account', input.userId);
     if (!this.mfa.verify(user.mfaSecretRef, input.code)) {
+      metrics.authAnomaly('step_up_failed');
       await this.audit.record({
         actor,
         action: 'auth.step_up_failed',
