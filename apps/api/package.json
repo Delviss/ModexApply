@@ -17,8 +17,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
-    "seed": "tsx prisma/seed.ts",
-    "reindex": "tsx prisma/reindex.ts"
+    "seed": "pnpm --filter @modex/contracts build && tsx prisma/seed.ts",
+    "reindex": "pnpm --filter @modex/contracts build && tsx prisma/reindex.ts"
   },
   "dependencies": {
     "@modex/contracts": "workspace:*",

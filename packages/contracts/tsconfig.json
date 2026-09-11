@@ -2,6 +2,11 @@
   "extends": "../config/tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
+    // Inside `dist`, deliberately. With the build info outside the output
+    // directory, `rm -rf dist` leaves `tsc -b` believing it is up to date and
+    // it emits nothing — which is how a fresh clone ends up with a package
+    // that "built" and has no files in it.
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
     "rootDir": "src",
     "composite": true
   },

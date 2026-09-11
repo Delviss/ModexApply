@@ -270,7 +270,10 @@ jobs:
 
       - name: Server logs on failure
         if: failure()
-        run: tail -100 /tmp/api.log /tmp/web.log
+        # `-n 100`, not `-100`: the obsolete form is rejected outright when more
+        # than one file is named, so the diagnostic step failed instead of
+        # printing the diagnosis.
+        run: tail -n 100 /tmp/api.log /tmp/web.log
 
   build:
     name: Build
