@@ -180,6 +180,18 @@ describe('publication gate', () => {
     expect(blockers.join(' ')).toMatch(/application fee waiver applies to the application fee/i);
   });
 
+  it('refuses a claim deadline that falls after the offer closes', () => {
+    const blockers = offerPublicationBlockers(
+      publishable({
+        type: 'scholarship',
+        applicationMethod: 'Apply on the university site.',
+        validUntil: '2026-09-01T00:00:00.000Z',
+        claimDeadline: '2027-04-30T00:00:00.000Z',
+      }),
+    );
+    expect(blockers.join(' ')).toMatch(/apply after it has gone/i);
+  });
+
   it('refuses a validity window that ends before it starts', () => {
     const blockers = offerPublicationBlockers(
       publishable({ validFrom: '2026-09-01T00:00:00.000Z', validUntil: '2026-01-01T00:00:00.000Z' }),

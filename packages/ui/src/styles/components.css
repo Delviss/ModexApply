@@ -2454,3 +2454,40 @@
   padding-top: var(--mx-space-2);
   border-top: 1px solid var(--mx-border);
 }
+
+/* The offer admin's actions cell. The disclosure is what keeps one incomplete
+   draft from setting the width of every row in the table — see the note in
+   `offer-admin.tsx`. */
+.mx-offer-admin__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+  align-items: flex-start;
+  /* Enough that the button and the summary do not crush, and no more: this is
+     the last column, so every pixel here is one the table overflows by. */
+  min-width: 116px;
+}
+.mx-offer-admin__blockers > summary {
+  cursor: pointer;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-warning-text);
+  white-space: nowrap;
+}
+.mx-offer-admin__blockers > ul {
+  /* Bounded so a long blocker wraps inside the cell instead of widening it. */
+  max-width: 280px;
+  margin: var(--mx-space-2) 0 0;
+  padding-left: var(--mx-space-4);
+  font-size: var(--mx-text-xs);
+  color: var(--mx-warning-text);
+}
+.mx-offer-admin__blockers > ul li + li { margin-top: var(--mx-space-1); }
+
+.mx-offer-admin__status { display: flex; flex-direction: column; gap: var(--mx-space-1); align-items: flex-start; }
+.mx-offer-admin__status > span {
+  /* Capped so a long verifier name wraps rather than widening the column. The
+     name stays in full — seven columns simply have to share the width. */
+  max-width: 120px;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-ink-600);
+}

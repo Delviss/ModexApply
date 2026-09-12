@@ -310,6 +310,18 @@ export function offerPublicationBlockers(
   if (new Date(offer.validUntil).getTime() <= new Date(offer.validFrom).getTime()) {
     blockers.push('A validity window that ends after it starts.');
   }
+  // A claim deadline after the offer stops existing tells a student to apply by
+  // a date on which there is nothing to apply for. Two dates that each look
+  // fine alone and contradict each other together — which is exactly the class
+  // of thing a structured offer is supposed to make impossible.
+  if (
+    offer.claimDeadline !== null &&
+    new Date(offer.claimDeadline).getTime() > new Date(offer.validUntil).getTime()
+  ) {
+    blockers.push(
+      'A claim deadline on or before the offer closes — this one asks students to apply after it has gone.',
+    );
+  }
 
   // Per-type required fields, straight from the issue's table.
   if (offer.type === 'scholarship') {

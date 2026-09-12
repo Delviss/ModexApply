@@ -585,9 +585,12 @@ async function main(): Promise<void> {
       ],
       termsSummary: 'A regional award for students from South Asia, renewed each year on progression.',
       applicationMethod: 'Apply on the university site by the deadline below.',
-      claimDeadline: new Date('2027-04-30'),
       // Inside the 14-day warning window on a clean clone, so the amber
-      // treatment is visible without editing a date by hand.
+      // treatment is visible without editing a date by hand — and the claim
+      // deadline sits inside it rather than beyond it, because an award you are
+      // told to apply for after it has closed is the contradiction the
+      // publication gate now refuses.
+      claimDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       validUntil: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
       sourceRef: 'https://example.ac.uk/fees/south-asia-award',
     },

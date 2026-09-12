@@ -27,12 +27,19 @@ import type { AdminOffer } from '@/lib/offers';
  * carrying the same verification vocabulary the student-facing badge uses — an
  * admin and an applicant must never read two different words for one state.
  *
- * The screen is opinionated about one thing: **publish is disabled, with the
- * reasons listed, until the offer is complete and Trust has verified it.** A
+ * The screen is opinionated about one thing: **publish is disabled, and what is
+ * missing is named, until the offer is complete and Trust has verified it.** A
  * greyed button with no explanation would send an admin to support; a greyed
  * button that says "no named verifier, no last-checked date" sends them to the
  * thing they can actually fix. The API and a database CHECK constraint enforce
  * the same list, so this is the explanation rather than the control.
+ *
+ * The list sits behind a disclosure rather than inline, and that is a layout
+ * decision with a reason: rendered open, seven blockers made one cell wider than
+ * the table and drove the row past 800px, pushing the primary action off the
+ * horizontal scroll. A count the admin can read at a glance, one click from the
+ * detail, keeps the explanation without letting one draft offer dictate the
+ * shape of every other row.
  */
 
 const PUBLICATION_TONES: Record<OfferPublicationState, 'neutral' | 'success' | 'warning' | 'info'> = {
@@ -43,12 +50,27 @@ const PUBLICATION_TONES: Record<OfferPublicationState, 'neutral' | 'success' | '
   expired: 'warning',
 };
 
+/**
+ * Badge labels. `in_review` reads "Not published" rather than "Verified, not
+ * published": the verification state is already on the line directly beneath,
+ * so the longer label repeated it — and, being the widest badge in the table,
+ * it was setting the width of the whole Status column to say it twice.
+ */
 const PUBLICATION_LABELS: Record<OfferPublicationState, string> = {
   draft: 'Draft',
-  in_review: 'Verified, not published',
+  in_review: 'Not published',
   published: 'Published',
   unpublished: 'Pulled',
   expired: 'Expired',
+};
+
+/** Reads naturally in a sentence, which the badge labels do not. */
+const FILTER_LABELS: Record<OfferPublicationState, string> = {
+  draft: 'draft',
+  in_review: 'verified but unpublished',
+  published: 'published',
+  unpublished: 'pulled',
+  expired: 'expired',
 };
 
 const VERIFICATION_LABELS: Record<VerificationState, string> = {
@@ -102,11 +124,11 @@ export function OfferAdmin({ rows, onPublish, onUnpublish }: OfferAdminProps) {
       value: (row) => `${row.publicationState} ${row.verificationState}`,
       sortable: true,
       render: (row) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div className="mx-offer-admin__status">
           <Badge tone={PUBLICATION_TONES[row.publicationState]}>
             {PUBLICATION_LABELS[row.publicationState]}
           </Badge>
-          <span style={{ fontSize: 'var(--mx-text-xs)', color: 'var(--mx-ink-600)' }}>
+          <span>
             {VERIFICATION_LABELS[row.verificationState]}
             {row.verifiedBy === null ? '' : ` · ${row.verifiedBy}`}
           </span>
@@ -150,7 +172,9 @@ export function OfferAdmin({ rows, onPublish, onUnpublish }: OfferAdminProps) {
     },
     {
       id: 'attached',
-      header: 'On applications',
+      // Short because the header is `white-space: nowrap` and this table has
+      // seven columns: "On applications" cost 30px of width for one word.
+      header: 'Applications',
       value: (row) => row.attachedApplications,
       sortable: true,
     },
@@ -169,7 +193,7 @@ export function OfferAdmin({ rows, onPublish, onUnpublish }: OfferAdminProps) {
             Pull
           </Button>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div className="mx-offer-admin__actions">
             <Button
               variant="primary"
               size="sm"
@@ -179,18 +203,16 @@ export function OfferAdmin({ rows, onPublish, onUnpublish }: OfferAdminProps) {
               Publish
             </Button>
             {row.blockers.length > 0 ? (
-              <ul
-                style={{
-                  margin: 0,
-                  paddingLeft: 'var(--mx-space-4)',
-                  fontSize: 'var(--mx-text-xs)',
-                  color: 'var(--mx-warning-text)',
-                }}
-              >
-                {row.blockers.map((blocker) => (
-                  <li key={blocker}>{blocker}</li>
-                ))}
-              </ul>
+              <details className="mx-offer-admin__blockers">
+                <summary>
+                  {row.blockers.length} thing{row.blockers.length === 1 ? '' : 's'} to fix
+                </summary>
+                <ul>
+                  {row.blockers.map((blocker) => (
+                    <li key={blocker}>{blocker}</li>
+                  ))}
+                </ul>
+              </details>
             ) : null}
           </div>
         ),
@@ -221,7 +243,7 @@ export function OfferAdmin({ rows, onPublish, onUnpublish }: OfferAdminProps) {
 
       {filtered.length === 0 ? (
         <EmptyState
-          title={filter === 'all' ? 'No offers yet' : `No ${PUBLICATION_LABELS[filter].toLowerCase()} offers`}
+          title={filter === 'all' ? 'No offers yet' : `No ${FILTER_LABELS[filter]} offers`}
           description={
             filter === 'all'
               ? 'Create a draft offer, then send it to Modex Trust for verification. Nothing reaches a student until a named verifier has checked it against your published terms and recorded the date they did.'
