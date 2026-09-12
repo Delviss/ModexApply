@@ -167,6 +167,19 @@ function paint() {
   const main = document.getElementById('main');
   if (main === null) return;
 
+  /**
+   * Where the keyboard was.
+   *
+   * A tick on one checkbox re-renders the whole view, which replaces the
+   * control that was just operated — so without this, a keyboard user ticking
+   * three documents in a row is thrown back to the top of the page after each
+   * one. Controls that live inside a list a change rebuilds carry a stable
+   * `data-focus-key`, and focus is put back on the same key afterwards.
+   */
+  const focusKey = document.activeElement instanceof HTMLElement
+    ? document.activeElement.dataset.focusKey ?? null
+    : null;
+
   for (const anchor of document.querySelectorAll('#primary-nav a')) {
     const href = anchor.getAttribute('href').slice(1);
     const active = href === '/' ? route.path === '/' : route.path.startsWith(href);
@@ -188,8 +201,13 @@ function paint() {
   }
 
   // Route changes move focus to the heading the way a page load would, so a
-  // screen-reader user is not left at the top of an unchanged nav.
+  // screen-reader user is not left at the top of an unchanged nav. Within one
+  // page, focus goes back to the control that caused the re-render.
   if (current !== null && current !== route.path) main.focus({ preventScroll: true });
+  else if (focusKey !== null) {
+    const restored = main.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
+    if (restored !== null) restored.focus({ preventScroll: true });
+  }
   if (current !== route.path) scrollTo({ top: 0, behavior: 'instant' });
   current = route.path;
 }
