@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Modex Apply</title>
+<script>
+  /* Pages serves this for any real path. The app routes on the hash, so keep
+     whatever was asked for and hand it to the app rather than showing a dead end. */
+  var base = location.pathname.replace(/\/[^/]*$/, '/');
+  var rest = location.pathname.slice(base.length);
+  location.replace(base + (rest ? '#/' + rest : '') + location.search);
+</script>
+<meta http-equiv="refresh" content="0;url=./">
+</head>
+<body><p>Redirecting to <a href="./">Modex Apply</a>.</p></body>
+</html>
