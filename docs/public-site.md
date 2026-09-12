@@ -13,6 +13,25 @@ GitHub Pages is static hosting, so the site is a static bundle built from
 network calls: everything a visitor does is held in their own browser under one
 `localStorage` key, and the footer has a control that erases it.
 
+## The home page
+
+The front door is laid out against the shape a study-abroad marketplace
+homepage has — one centred promise over a programme search, a scrolling
+destination rail, three audiences, a how-it-works and a closing band — because
+a student comparing this with an agent marketplace should not have to learn a
+new page to do it.
+
+Every number on it is computed from the data in this repository, not written
+into the page: the register count, the published-programme count and the
+discoverable-guide count come from the same selectors the rest of the site
+reads, and each says where it came from and whether it is sample data. Each
+destination tile carries **both** numbers — "8 in the register · 0 sample
+programmes" — because a register entry is a publicly verifiable name, not a
+partner with a catalogue, and a tile showing only the larger number would be
+the move this platform exists to remove. The incumbent pattern here is a scale
+claim and a row of stock-photo faces; neither is available honestly, so neither
+is on the page.
+
 What it is *not* is a mock. The rules that make this platform what it is are
 imported, not reimplemented:
 

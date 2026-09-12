@@ -2623,3 +2623,857 @@
   font-size: var(--mx-text-xs);
   color: var(--mx-warning-text);
 }
+
+/* ---------------------------------------------------------------------------
+   Phase 7 — the public landing page
+   ---------------------------------------------------------------------------
+
+   The marketplace shape a study-abroad homepage is expected to have: a slim
+   header, one centred promise, the search that is the real first step, a
+   scrolling destination rail, three audiences, the journey, and a closing band.
+
+   Two colour decisions worth reading. Brand crimson stays an accent everywhere
+   above the closing band — the hero ground is a single tinted wash
+   (`--mx-action-subtle`) fading to canvas, not a crimson field. The closing band is the one crimson ground on
+   the platform, and it earns that by carrying exactly one action and no state:
+   nothing on it means verified, eligible or approved.
+
+   Every pairing used below is in `tokens/contrast.ts` and measured in both
+   themes on every CI run.
+   --------------------------------------------------------------------------- */
+
+/*
+ * The landing blocks size themselves with `width: 100%` plus a gutter, so they
+ * need the border-box model. The package ships no global reset — adding one
+ * here would silently re-lay-out every surface built against the content-box
+ * default — so the reset is scoped to this page's own blocks.
+ */
+:where(
+    .mx-landing,
+    .mx-landing-hero,
+    .mx-marquee,
+    .mx-landing-section,
+    .mx-cta-band,
+    .mx-landing-footer
+  ),
+:where(
+    .mx-landing,
+    .mx-landing-hero,
+    .mx-marquee,
+    .mx-landing-section,
+    .mx-cta-band,
+    .mx-landing-footer
+  )
+  :where(*, *::before, *::after) {
+  box-sizing: border-box;
+}
+
+.mx-landing {
+  --mx-landing-width: 1160px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Hero ---------------------------------------------------------------- */
+
+.mx-landing-hero {
+  --mx-landing-width: 1160px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(
+    180deg,
+    var(--mx-action-subtle) 0%,
+    var(--mx-surface) 58%,
+    var(--mx-canvas) 100%
+  );
+  border-bottom: 1px solid var(--mx-border);
+  overflow: hidden;
+}
+
+.mx-landing-header {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-6);
+  width: 100%;
+  max-width: var(--mx-landing-width);
+  margin: 0 auto;
+  padding: var(--mx-space-6) var(--mx-space-6);
+}
+
+.mx-landing-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  font-size: var(--mx-text-md);
+  font-weight: var(--mx-weight-bold);
+  letter-spacing: -0.02em;
+  color: var(--mx-ink-900);
+  text-decoration: none;
+}
+
+.mx-landing-brand__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--mx-radius-control);
+  background: var(--mx-action);
+  color: var(--mx-action-fg);
+  font-size: var(--mx-text-sm);
+  font-weight: var(--mx-weight-bold);
+}
+
+.mx-landing-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-1);
+  margin-inline-start: auto;
+  flex-wrap: wrap;
+}
+
+.mx-landing-nav__link {
+  padding: var(--mx-space-2) var(--mx-space-3);
+  border-radius: var(--mx-radius-control);
+  color: var(--mx-ink-600);
+  font-size: var(--mx-text-sm);
+  font-weight: var(--mx-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mx-landing-nav__link:hover {
+  background: var(--mx-subtle);
+  color: var(--mx-ink-900);
+}
+
+.mx-landing-nav__link[aria-current='page'] {
+  background: var(--mx-action-subtle);
+  color: var(--mx-action-subtle-fg);
+}
+
+.mx-landing-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  margin-inline-start: auto;
+}
+
+/* The nav already pushed itself right; two `auto` margins would split the row. */
+.mx-landing-nav ~ .mx-landing-header__actions {
+  margin-inline-start: 0;
+}
+
+.mx-landing-hero__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mx-space-6);
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--mx-space-12) var(--mx-space-6) var(--mx-space-8);
+  text-align: center;
+}
+
+.mx-landing-hero__eyebrow {
+  display: flex;
+  justify-content: center;
+}
+
+.mx-landing-hero__title {
+  margin: 0;
+  max-width: 20ch;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: var(--mx-weight-bold);
+  line-height: var(--mx-leading-tight);
+  letter-spacing: -0.025em;
+  color: var(--mx-ink-900);
+  text-wrap: balance;
+}
+
+.mx-landing-hero__subtitle {
+  margin: 0;
+  max-width: 60ch;
+  font-size: var(--mx-text-md);
+  line-height: var(--mx-leading-body);
+  color: var(--mx-ink-600);
+}
+
+.mx-landing-hero__search {
+  width: 100%;
+  max-width: 620px;
+}
+
+/* The search row is one control to the eye: a pill holding a field and the
+   action, so the first step on the page is typing rather than choosing. */
+.mx-landing-search {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  width: 100%;
+  padding: var(--mx-space-2);
+  background: var(--mx-surface);
+  border: 1px solid var(--mx-border-input);
+  border-radius: var(--mx-radius-pill);
+  box-shadow: var(--mx-shadow-2);
+}
+
+.mx-landing-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  padding-inline: var(--mx-space-4);
+  border: 0;
+  background: transparent;
+  color: var(--mx-ink-900);
+  font-family: inherit;
+  font-size: var(--mx-text-base);
+}
+
+.mx-landing-search__input::placeholder {
+  color: var(--mx-ink-600);
+}
+
+.mx-landing-search__input:focus-visible {
+  outline-offset: -2px;
+}
+
+.mx-landing-search .mx-button {
+  border-radius: var(--mx-radius-pill);
+  flex: none;
+}
+
+.mx-landing-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--mx-space-3);
+}
+
+.mx-landing-hero__actions .mx-button {
+  border-radius: var(--mx-radius-pill);
+}
+
+.mx-landing-hero__disclaimer {
+  margin: 0;
+  max-width: 68ch;
+  font-size: var(--mx-text-xs);
+  line-height: var(--mx-leading-body);
+  color: var(--mx-ink-600);
+}
+
+.mx-landing-hero__proof {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--mx-space-4) var(--mx-space-8);
+}
+
+.mx-proof-point {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 140px;
+}
+
+.mx-proof-point__value {
+  font-size: var(--mx-text-2xl);
+  font-weight: var(--mx-weight-bold);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--mx-ink-900);
+}
+
+.mx-proof-point[data-tone='brand'] .mx-proof-point__value {
+  color: var(--mx-link);
+}
+
+.mx-proof-point__label {
+  font-size: var(--mx-text-sm);
+  font-weight: var(--mx-weight-medium);
+  color: var(--mx-ink-900);
+}
+
+.mx-proof-point__source {
+  font-size: var(--mx-text-xs);
+  color: var(--mx-ink-600);
+}
+
+/* The entrance. Gated twice — here and on `usePrefersReducedMotion` — because
+   either alone would be enough and a component that forgets still degrades. */
+@keyframes mx-landing-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mx-landing-hero[data-animate='true'] .mx-landing-hero__body {
+  animation: mx-landing-in var(--mx-motion-surface) var(--mx-motion-easing) both;
+}
+
+/* `HeroSection` names this keyframe; without it the block renders un-animated
+   and the rule silently does nothing. */
+@keyframes mx-hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-landing-hero[data-animate='true'] .mx-landing-hero__body,
+  .mx-hero {
+    animation: none;
+  }
+}
+
+/* --- Marquee ------------------------------------------------------------- */
+
+.mx-marquee {
+  position: relative;
+  width: 100%;
+  padding-block: var(--mx-space-8) var(--mx-space-6);
+}
+
+.mx-marquee__viewport {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  padding-block: var(--mx-space-2);
+}
+
+.mx-marquee[data-still='true'] .mx-marquee__viewport {
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.mx-marquee__track {
+  display: flex;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation-name: mx-marquee-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.mx-marquee[data-still='true'] .mx-marquee__track {
+  animation: none;
+}
+
+/* Gap lives on the item, not the track: a flex `gap` on the track would put a
+   seam between the set and its echo, and the loop would visibly stutter. */
+.mx-marquee__item {
+  flex: 0 0 auto;
+  margin-inline-end: var(--mx-space-4);
+  scroll-snap-align: start;
+}
+
+.mx-marquee__item:first-child {
+  margin-inline-start: var(--mx-space-4);
+}
+
+@keyframes mx-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* Hover and keyboard focus pause it. The button below is the explicit control
+   WCAG 2.2.2 asks for; these two are the ones people reach for first. */
+.mx-marquee:hover .mx-marquee__track,
+.mx-marquee:focus-within .mx-marquee__track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-marquee__track {
+    animation: none;
+  }
+  .mx-marquee__viewport {
+    overflow-x: auto;
+  }
+}
+
+/* The edges fade into the ground the rail sits on — the foot of the hero
+   gradient, which is `--mx-canvas`. */
+.mx-marquee__viewport::before,
+.mx-marquee__viewport::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  width: clamp(32px, 10vw, 140px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.mx-marquee__viewport::before {
+  inset-inline-start: 0;
+  background: linear-gradient(90deg, var(--mx-canvas), transparent);
+}
+
+.mx-marquee__viewport::after {
+  inset-inline-end: 0;
+  background: linear-gradient(270deg, var(--mx-canvas), transparent);
+}
+
+/* A fade over a row somebody is scrolling by hand hides the card they are
+   scrolling towards, and it scrolls with the content rather than staying put. */
+.mx-marquee[data-still='true'] .mx-marquee__viewport::before,
+.mx-marquee[data-still='true'] .mx-marquee__viewport::after {
+  display: none;
+}
+
+.mx-marquee__toggle {
+  display: block;
+  margin: var(--mx-space-3) auto 0;
+  padding: var(--mx-space-1) var(--mx-space-3);
+  border: 1px solid var(--mx-border-input);
+  border-radius: var(--mx-radius-pill);
+  background: var(--mx-surface);
+  color: var(--mx-ink-600);
+  font-family: inherit;
+  font-size: var(--mx-text-xs);
+  cursor: pointer;
+}
+
+.mx-marquee__toggle:hover {
+  background: var(--mx-subtle);
+  color: var(--mx-ink-900);
+}
+
+/* --- Destination tile ---------------------------------------------------- */
+
+.mx-destination {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+  width: 260px;
+  padding: var(--mx-space-4);
+  background: var(--mx-surface);
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-sheet);
+  box-shadow: var(--mx-shadow-1);
+  text-decoration: none;
+  transition:
+    transform var(--mx-motion-fast) var(--mx-motion-easing),
+    box-shadow var(--mx-motion-fast) var(--mx-motion-easing);
+}
+
+.mx-destination:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--mx-shadow-2);
+}
+
+.mx-destination__code {
+  align-self: flex-start;
+  padding: 2px var(--mx-space-2);
+  border-radius: var(--mx-radius-pill);
+  background: var(--mx-action-subtle);
+  color: var(--mx-action-subtle-fg);
+  font-size: var(--mx-text-xs);
+  font-weight: var(--mx-weight-bold);
+  letter-spacing: 0.08em;
+}
+
+.mx-destination__name {
+  font-size: var(--mx-text-lg);
+  font-weight: var(--mx-weight-semibold);
+  letter-spacing: -0.01em;
+  color: var(--mx-ink-900);
+}
+
+.mx-destination__detail {
+  font-size: var(--mx-text-sm);
+  color: var(--mx-ink-600);
+}
+
+.mx-destination__meta {
+  font-size: var(--mx-text-xs);
+  color: var(--mx-ink-600);
+}
+
+/* --- Sections ------------------------------------------------------------ */
+
+.mx-landing-section {
+  --mx-landing-width: 1160px;
+  padding-block: var(--mx-space-16);
+  background: var(--mx-surface);
+}
+
+.mx-landing-section[data-tone='canvas'] {
+  background: var(--mx-canvas);
+  border-block: 1px solid var(--mx-border);
+}
+
+.mx-landing-section[data-tone='tinted'] {
+  background: var(--mx-action-subtle);
+  border-block: 1px solid var(--mx-border);
+}
+
+.mx-landing-section__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-8);
+  width: 100%;
+  max-width: var(--mx-landing-width);
+  margin: 0 auto;
+  padding-inline: var(--mx-space-6);
+}
+
+.mx-landing-section__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-3);
+  max-width: 68ch;
+}
+
+.mx-landing-eyebrow {
+  font-size: var(--mx-text-xs);
+  font-weight: var(--mx-weight-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mx-link);
+}
+
+.mx-landing-section__title {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, var(--mx-text-3xl));
+  font-weight: var(--mx-weight-bold);
+  line-height: var(--mx-leading-tight);
+  letter-spacing: -0.02em;
+  color: var(--mx-ink-900);
+}
+
+.mx-landing-section__description {
+  margin: 0;
+  font-size: var(--mx-text-md);
+  line-height: var(--mx-leading-body);
+  color: var(--mx-ink-600);
+}
+
+.mx-landing-section__footnote {
+  margin: 0;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-ink-600);
+}
+
+.mx-landing-grid {
+  display: grid;
+  gap: var(--mx-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+/* --- Audience card ------------------------------------------------------- */
+
+.mx-audience-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+  padding: var(--mx-space-6);
+  background: var(--mx-surface);
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius-card);
+  box-shadow: var(--mx-shadow-1);
+}
+
+.mx-audience-card__title {
+  margin: 0;
+  font-size: var(--mx-text-lg);
+  font-weight: var(--mx-weight-semibold);
+  color: var(--mx-ink-900);
+}
+
+.mx-audience-card__description {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  line-height: var(--mx-leading-body);
+  color: var(--mx-ink-600);
+}
+
+.mx-audience-card__points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+  margin: var(--mx-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--mx-text-sm);
+  color: var(--mx-ink-800);
+}
+
+.mx-audience-card__points li {
+  position: relative;
+  padding-inline-start: var(--mx-space-4);
+}
+
+.mx-audience-card__points li::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--mx-radius-pill);
+  background: var(--mx-action);
+}
+
+.mx-audience-card__action {
+  margin-block-start: auto;
+  padding-block-start: var(--mx-space-4);
+  font-size: var(--mx-text-sm);
+  font-weight: var(--mx-weight-semibold);
+  color: var(--mx-link);
+  text-decoration: none;
+}
+
+.mx-audience-card__action:hover {
+  text-decoration: underline;
+}
+
+/* --- Journey ------------------------------------------------------------- */
+
+.mx-journey {
+  display: grid;
+  gap: var(--mx-space-6);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: mx-journey;
+}
+
+.mx-journey__step {
+  display: flex;
+  gap: var(--mx-space-4);
+  align-items: flex-start;
+}
+
+.mx-journey__index {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--mx-radius-pill);
+  background: var(--mx-action-subtle);
+  color: var(--mx-action-subtle-fg);
+  font-size: var(--mx-text-sm);
+  font-weight: var(--mx-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-journey__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-1);
+}
+
+.mx-journey__title {
+  margin: 0;
+  font-size: var(--mx-text-base);
+  font-weight: var(--mx-weight-semibold);
+  color: var(--mx-ink-900);
+}
+
+.mx-journey__owner {
+  font-size: var(--mx-text-xs);
+  font-weight: var(--mx-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mx-ink-600);
+}
+
+.mx-journey__body {
+  margin: 0;
+  font-size: var(--mx-text-sm);
+  line-height: var(--mx-leading-body);
+  color: var(--mx-ink-600);
+}
+
+/* --- Closing band -------------------------------------------------------- */
+
+.mx-cta-band {
+  background: var(--mx-brand-band);
+  color: var(--mx-brand-band-fg);
+  padding-block: var(--mx-space-16);
+}
+
+.mx-cta-band__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mx-space-4);
+  max-width: 760px;
+  margin: 0 auto;
+  padding-inline: var(--mx-space-6);
+  text-align: center;
+}
+
+.mx-cta-band__title {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, var(--mx-text-3xl));
+  font-weight: var(--mx-weight-bold);
+  line-height: var(--mx-leading-tight);
+  letter-spacing: -0.02em;
+  color: var(--mx-brand-band-fg);
+}
+
+.mx-cta-band__description {
+  margin: 0;
+  font-size: var(--mx-text-md);
+  line-height: var(--mx-leading-body);
+  color: var(--mx-brand-band-fg);
+}
+
+.mx-cta-band__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mx-space-4);
+}
+
+.mx-cta-band__primary.mx-button {
+  background: var(--mx-brand-band-fg);
+  color: var(--mx-brand-band);
+  border-radius: var(--mx-radius-pill);
+}
+
+.mx-cta-band__primary.mx-button:hover {
+  background: var(--mx-subtle);
+}
+
+.mx-cta-band__link {
+  color: var(--mx-brand-band-fg);
+  font-size: var(--mx-text-sm);
+  font-weight: var(--mx-weight-medium);
+}
+
+.mx-cta-band__footnote {
+  margin: 0;
+  font-size: var(--mx-text-xs);
+  color: var(--mx-brand-band-fg);
+}
+
+/* The focus ring on a crimson ground must not be crimson. */
+.mx-cta-band :where(a, button):focus-visible {
+  outline-color: var(--mx-brand-band-fg);
+}
+
+/* --- Landing footer ------------------------------------------------------ */
+
+.mx-landing-footer {
+  --mx-landing-width: 1160px;
+  background: var(--mx-surface);
+  border-block-start: 1px solid var(--mx-border);
+  padding-block: var(--mx-space-12);
+  font-size: var(--mx-text-sm);
+  color: var(--mx-ink-600);
+}
+
+.mx-landing-footer__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-6);
+  max-width: var(--mx-landing-width);
+  margin: 0 auto;
+  padding-inline: var(--mx-space-6);
+}
+
+.mx-landing-footer__columns {
+  display: grid;
+  gap: var(--mx-space-6);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.mx-landing-footer__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-2);
+}
+
+.mx-landing-footer__heading {
+  font-size: var(--mx-text-xs);
+  font-weight: var(--mx-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mx-ink-900);
+}
+
+.mx-landing-footer__column a {
+  color: var(--mx-ink-600);
+  text-decoration: none;
+}
+
+.mx-landing-footer__column a:hover {
+  color: var(--mx-ink-900);
+  text-decoration: underline;
+}
+
+.mx-landing-footer__legal {
+  margin: 0;
+  max-width: 90ch;
+  font-size: var(--mx-text-xs);
+  line-height: var(--mx-leading-body);
+  color: var(--mx-ink-600);
+}
+
+/* --- Narrow viewports ---------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .mx-landing-header {
+    flex-wrap: wrap;
+    gap: var(--mx-space-3);
+    padding-block: var(--mx-space-4);
+  }
+
+  /* One scrolling row of nav rather than three stacked ones on a phone. */
+  .mx-landing-nav {
+    order: 3;
+    width: 100%;
+    margin-inline-start: 0;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .mx-landing-nav ~ .mx-landing-header__actions {
+    margin-inline-start: auto;
+  }
+
+  .mx-landing-hero__body {
+    padding-block: var(--mx-space-8) var(--mx-space-6);
+  }
+
+  .mx-landing-search {
+    flex-wrap: wrap;
+    border-radius: var(--mx-radius-sheet);
+  }
+
+  .mx-landing-search .mx-button {
+    width: 100%;
+  }
+
+  .mx-landing-section {
+    padding-block: var(--mx-space-12);
+  }
+
+  .mx-destination {
+    width: 220px;
+  }
+}

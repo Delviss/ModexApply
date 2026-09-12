@@ -235,6 +235,36 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = Object.freeze([
     background: neutral.surface,
     use: 'large',
   },
+  // --- Phase 7: the landing page's tinted ground -------------------------
+  //
+  // The hero wash, the destination chip, the journey numeral and the tinted
+  // section all sit on `--mx-action-subtle`, which is brand-50 on light and
+  // brand-950 on dark. Everything that puts text on that ground is measured in
+  // both themes here rather than inferred from the surface pairs.
+  {
+    name: 'brand-600 on brand-50 (section eyebrow on a tinted ground)',
+    foreground: brand[600],
+    background: brand[50],
+    use: 'body',
+  },
+  {
+    name: 'dark brand link on dark brand ground (tinted chip and eyebrow)',
+    foreground: dark.brandLink,
+    background: dark.brandGround,
+    use: 'body',
+  },
+  {
+    name: 'dark ink-900 on dark brand ground (copy on a tinted section)',
+    foreground: dark.ink900,
+    background: dark.brandGround,
+    use: 'body',
+  },
+  {
+    name: 'dark ink-600 on dark brand ground (secondary copy on a tinted section)',
+    foreground: dark.ink600,
+    background: dark.brandGround,
+    use: 'body',
+  },
   { name: 'dark success on dark subtle (a saving on a de-emphasised offer card)', foreground: dark.success, background: dark.subtle, use: 'body' },
   { name: 'dark warning on dark subtle (an unmet offer condition)', foreground: dark.warning, background: dark.subtle, use: 'body' },
   { name: 'dark warning on dark surface (an offer inside 14 days)', foreground: dark.warning, background: dark.surface, use: 'body' },

@@ -57,6 +57,27 @@ export {
   type SearchableAccordionProps,
 } from './blocks/searchable-accordion.js';
 export { HeroSection, type HeroAction, type HeroSectionProps } from './blocks/hero-section.js';
+export {
+  LandingHero,
+  type LandingAction,
+  type LandingHeroProps,
+  type LandingNavItem,
+} from './blocks/landing-hero.js';
+export { Marquee, type MarqueeProps } from './blocks/marquee.js';
+export {
+  AudienceCard,
+  CtaBand,
+  DestinationCard,
+  JourneySteps,
+  LandingSection,
+  ProofPoint,
+  type AudienceCardProps,
+  type CtaBandProps,
+  type DestinationCardProps,
+  type JourneyStep,
+  type LandingSectionProps,
+  type ProofPointProps,
+} from './blocks/landing-sections.js';
 export { Sheet, type SheetProps } from './blocks/sheet.js';
 export { GuideCard, type GuideCardProps } from './blocks/guide-card.js';
 export {

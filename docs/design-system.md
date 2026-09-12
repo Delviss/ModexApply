@@ -16,9 +16,14 @@ pnpm check:vendor-hex                  # catch un-re-themed vendor colours
 
 ## 1. The rule that shapes everything else
 
-Red is an accent for **action and identity**. It is never a background wash,
-never an error state, and never used to make an ineligible programme or an
-unverified offer look approved.
+Red is an accent for **action and identity**. It is never an error state, and
+never used to make an ineligible programme or an unverified offer look approved.
+
+It is not a background wash either, with exactly one exception, named so that it
+stays one: `--mx-brand-band`, the closing band of the public landing page. That
+band earns a crimson ground by carrying a single action and no state — nothing
+on it means verified, eligible or approved — and §4 covers why the role, rather
+than a brand step, is what components reference.
 
 Three consequences run through the whole system:
 
@@ -97,7 +102,7 @@ with the WCAG 2.2 minimum for **that use**:
 | `large` | 3:1 | ≥24px, or ≥18.66px bold |
 | `ui` | 3:1 | Component boundaries, icons (1.4.11) |
 
-38 pairings are measured on every CI run, in both themes. A pairing that is not
+67 pairings are measured on every CI run, in both themes. A pairing that is not
 in the registry is not an approved pairing — adding a combination to the
 registry is how a designer asks for it, and the gate is what answers.
 
@@ -124,6 +129,14 @@ Brand actions move **up** the scale on dark, because `--mx-brand-600` measures
 
 Semantic colours brighten too — `#4FBF87`, `#E0A93F`, `#F2795A`, `#6FA8E8` — all
 measured in the gate.
+
+One role moves the other way. `--mx-brand-band` is the single crimson *ground*
+the system allows — the closing band of the public landing page — and it is
+`--mx-brand-600` on light but `--mx-brand-950` on dark, with `--mx-ink-900`
+over it. Actions move up the scale on dark because a 600 action is unreadable
+there; a 400 *fill* the width of the page is the opposite problem, a searing
+pink slab where light gets a deep crimson one. Both ends read as the same band,
+which is the whole point of it being a role rather than a brand step.
 
 ---
 
@@ -163,6 +176,25 @@ exempt. A literal colour anywhere else fails the build.
 
 `API_KEY_21ST` was not available in this environment, so blocks were rebuilt to
 the archetype rather than installed and diffed.
+
+### The landing blocks (Phase 7)
+
+`LandingHero`, `Marquee` and the landing sections came in differently: the
+source was a `pulse-fit-hero.tsx` supplied directly rather than through the
+registry, so there is no registry path to record and their provenance note
+lives in each component's header instead. Four things were rebound on the way
+in, and each is in the component that carries it:
+
+| Vendor | Here | Why |
+|---|---|---|
+| Inline literals throughout | Red Velvet tokens | The vendor-colour gate is what proves the re-theme finished. |
+| Framer Motion | CSS animation + `usePrefersReducedMotion` | A marquee is one `translateX` keyframe; the package carries no animation runtime for any other block either. |
+| A carousel with no pause control | An explicit pause that drops to a still, scrollable row | WCAG 2.2.2: anything moving for more than five seconds needs a control, and a frozen transform leaves half the cards unreachable. |
+| Avatar social proof — four stock faces, "join over 10,000+ people" | `proof`: counted facts, each with its source | An unsourced total on the front page of a platform built to remove unsourced claims is the one thing this homepage cannot ship. |
+
+The landing CSS also carries a `box-sizing: border-box` reset scoped to those
+blocks. The package ships no global reset, and adding one would silently
+re-lay-out every surface built against the content-box default.
 [`packages/ui/src/registry.ts`](../packages/ui/src/registry.ts) records all 36
 blocks named in issue #2 §2 — the registry path, what each maps to here, and for
 anything deferred, why. The messaging and scheduling picks are deferred because

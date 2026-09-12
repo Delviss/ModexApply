@@ -63,7 +63,7 @@ async function go(hash, expected) {
 }
 
 console.log('routes');
-await go('/', 'Apply directly to verified universities');
+await go('/', 'Apply directly. Ask students who already study there.');
 await go('/programmes', 'Programmes');
 await go('/programmes/example-msc-computer-science', 'MSc Computer Science');
 await go('/institutions/inst-example', 'Verification');
@@ -81,6 +81,25 @@ await go('/admin/trust', 'Cases');
 await go('/admin/ops', 'Connectors');
 await go('/admin/finance', 'Reward ledger');
 await go('/nonsense/route', 'That page does not exist');
+
+console.log('the landing rail');
+// WCAG 2.2.2: the destination rail moves for longer than five seconds, so the
+// pause control is a requirement rather than a nicety. Pausing has to leave
+// every card reachable, which is why it drops to the still, scrollable row
+// instead of freezing a transform with half the set off-screen.
+await go('/', 'United Kingdom');
+check('the scrolling rail paints its set twice for a seamless loop',
+  (await page.locator('.lp-marquee__track').count()) === 2);
+check('the echoed set is hidden from assistive technology',
+  (await page.locator('.lp-marquee__track[aria-hidden="true"]').count()) === 1);
+check('every echoed card is out of the tab order',
+  (await page.locator('.lp-marquee__track[aria-hidden="true"] a:not([tabindex="-1"])').count()) === 0);
+await page.click('.lp-marquee__toggle');
+check('pausing drops to a single, keyboard-reachable row',
+  (await page.locator('.lp-marquee__track').count()) === 1 &&
+  (await page.getAttribute('.lp-marquee__viewport', 'tabindex')) === '0');
+check('the counts on the rail come from the register, not the page',
+  (await page.textContent('#main')).includes('in the register'));
 
 console.log('the money rule');
 await go('/programmes/northern-msc-cyber-security', 'Tuition withheld');
