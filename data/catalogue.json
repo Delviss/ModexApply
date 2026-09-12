@@ -1,0 +1,334 @@
+{
+  "$comment": "SAMPLE catalogue. Every institution, programme, fee and deadline in this file is fictional and is rendered with a visible 'Sample data' chip. It exists so the public site can demonstrate a complete journey without attributing an invented tuition figure or deadline to a real university. Real universities live in data/institution-register.json and carry publicly verifiable identity facts only, with no catalogue until the institution publishes one.",
+  "dataClass": "sample",
+  "generatedFor": "https://delviss.github.io/ModexApply/",
+  "institutions": [
+    {
+      "id": "inst-example",
+      "legalName": "The University of Example",
+      "displayName": "University of Example",
+      "country": "GB",
+      "city": "Example City",
+      "domains": ["example.ac.uk"],
+      "websiteUrl": "https://www.example.ac.uk",
+      "description": "A comprehensive sample institution used to exercise the full Modex Apply journey: catalogue sync, direct application over an API connector, a verified guide roster and published scholarships.",
+      "verification": {
+        "state": "verified",
+        "stage": "contracted",
+        "verifiedAt": "2026-06-02T09:12:00.000Z",
+        "expiresAt": "2027-06-02T09:12:00.000Z",
+        "verifierName": "Modex Trust",
+        "verifierType": "trust_agent",
+        "evidenceSummary": "Legal entity confirmed, official domain confirmed by DNS record, authorised signatory verified on that domain, and a signed partnership contract on file."
+      },
+      "pipeline": [
+        { "stage": "identity_confirmed", "status": "done" },
+        { "stage": "domain_confirmed", "status": "done" },
+        { "stage": "signatory_confirmed", "status": "done" },
+        { "stage": "contracted", "status": "done" }
+      ],
+      "campuses": [
+        { "id": "camp-example-main", "name": "Central campus", "city": "Example City", "country": "GB" },
+        { "id": "camp-example-riverside", "name": "Riverside campus", "city": "Example City", "country": "GB" }
+      ],
+      "partnership": {
+        "status": "active",
+        "scopes": ["catalogue_sync", "direct_application", "guide_programme", "offer_publication"],
+        "startDate": "2026-06-02",
+        "endDate": "2027-06-02"
+      },
+      "connector": {
+        "kind": "direct_api",
+        "name": "Example Admissions API v3",
+        "health": "healthy",
+        "confirmsReceipt": true,
+        "medianAckSeconds": 42
+      }
+    },
+    {
+      "id": "inst-northern",
+      "legalName": "Northern Institute of Technology",
+      "displayName": "Northern Institute of Technology",
+      "country": "GB",
+      "city": "Northgate",
+      "domains": ["northern.example.ac.uk"],
+      "websiteUrl": "https://www.northern.example.ac.uk",
+      "description": "A sample technical institute on a secure-handoff route rather than an API: submission is confirmed by the university's portal, never by Modex generating a payload.",
+      "verification": {
+        "state": "verified",
+        "stage": "contracted",
+        "verifiedAt": "2026-07-14T11:00:00.000Z",
+        "expiresAt": "2027-07-14T11:00:00.000Z",
+        "verifierName": "Modex Trust",
+        "verifierType": "trust_agent",
+        "evidenceSummary": "Legal entity confirmed, official domain confirmed by DNS record, authorised signatory verified, partnership contract on file with a secure-handoff scope."
+      },
+      "pipeline": [
+        { "stage": "identity_confirmed", "status": "done" },
+        { "stage": "domain_confirmed", "status": "done" },
+        { "stage": "signatory_confirmed", "status": "done" },
+        { "stage": "contracted", "status": "done" }
+      ],
+      "campuses": [{ "id": "camp-northern-main", "name": "Northgate campus", "city": "Northgate", "country": "GB" }],
+      "partnership": {
+        "status": "active",
+        "scopes": ["catalogue_sync", "direct_application", "guide_programme"],
+        "startDate": "2026-07-14",
+        "endDate": "2027-07-14"
+      },
+      "connector": {
+        "kind": "secure_handoff",
+        "name": "Northgate applicant portal handoff",
+        "health": "degraded",
+        "confirmsReceipt": true,
+        "medianAckSeconds": 900
+      }
+    },
+    {
+      "id": "inst-northwind",
+      "legalName": "Stichting Northwind University",
+      "displayName": "Northwind University",
+      "country": "NL",
+      "city": "Vaalburg",
+      "domains": ["northwind.example.nl"],
+      "websiteUrl": "https://www.northwind.example.nl",
+      "description": "A sample Dutch institution mid-verification: the catalogue is published under review, so its programmes are visible with a warning rather than hidden or presented as confirmed.",
+      "verification": {
+        "state": "pending",
+        "stage": "signatory_confirmed",
+        "verifiedAt": null,
+        "expiresAt": null,
+        "verifierName": null,
+        "verifierType": null,
+        "evidenceSummary": null
+      },
+      "pipeline": [
+        { "stage": "identity_confirmed", "status": "done" },
+        { "stage": "domain_confirmed", "status": "done" },
+        { "stage": "signatory_confirmed", "status": "active" },
+        { "stage": "contracted", "status": "pending" }
+      ],
+      "campuses": [{ "id": "camp-northwind-main", "name": "Vaalburg campus", "city": "Vaalburg", "country": "NL" }],
+      "partnership": { "status": "in_negotiation", "scopes": ["catalogue_sync"], "startDate": null, "endDate": null },
+      "connector": { "kind": "none", "name": "No direct route agreed yet", "health": "unavailable", "confirmsReceipt": false, "medianAckSeconds": null }
+    }
+  ],
+
+  "programmes": [
+    {
+      "id": "prog-ex-msc-cs",
+      "programKey": "example-msc-computer-science",
+      "institutionId": "inst-example",
+      "campusId": "camp-example-main",
+      "name": "MSc Computer Science",
+      "level": "postgraduate_taught",
+      "field": "Computer science",
+      "durationMonths": 12,
+      "studyMode": "full_time",
+      "description": "Conversion-friendly master's covering systems, algorithms and applied machine learning, with a summer dissertation project.",
+      "version": 7,
+      "effectiveFrom": "2026-08-01T00:00:00.000Z",
+      "provenance": { "sourceUpdatedAt": "2026-09-04T06:00:00.000Z", "verifiedAt": "2026-09-04T06:05:00.000Z", "expiresAt": "2026-12-04T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:programmes/msc-cs@v7", "reviewedBy": null },
+      "requirements": [
+        { "id": "req-ex-cs-1", "ruleType": "academic_qualification", "humanSummary": "A bachelor's degree in any subject. A computing background is not required.", "sourceRef": "example-api:requirements/msc-cs#qualification", "ruleJson": { "ruleType": "academic_qualification", "level": "bachelors", "countries": [] } },
+        { "id": "req-ex-cs-2", "ruleType": "gpa_minimum", "humanSummary": "An upper second class (2:1) degree, or a GPA of 3.0 on a 4.0 scale.", "sourceRef": "example-api:requirements/msc-cs#grade", "ruleJson": { "ruleType": "gpa_minimum", "scale": "gpa_4", "comparison": "gte", "value": 3 } },
+        { "id": "req-ex-cs-3", "ruleType": "english_language", "humanSummary": "IELTS Academic 6.5 overall with no band below 6.0, taken within the last two years.", "sourceRef": "example-api:requirements/msc-cs#english", "ruleJson": { "ruleType": "english_language", "test": "ielts", "overallMinimum": 6.5, "bandMinimums": { "writing": 6, "speaking": 6, "reading": 6, "listening": 6 } } },
+        { "id": "req-ex-cs-4", "ruleType": "document_required", "humanSummary": "An academic transcript covering your whole degree.", "sourceRef": "example-api:requirements/msc-cs#documents", "ruleJson": { "ruleType": "document_required", "documentType": "transcript", "certified": false } }
+      ],
+      "fees": { "tuitionMinor": 2250000, "tuitionCurrency": "GBP", "applicationFeeMinor": 6000, "applicationFeeCurrency": "GBP", "depositMinor": 400000, "depositCurrency": "GBP", "provenance": { "sourceUpdatedAt": "2026-09-04T06:00:00.000Z", "verifiedAt": "2026-09-04T06:05:00.000Z", "expiresAt": "2026-11-04T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:fees/msc-cs@2026", "reviewedBy": null } },
+      "intakes": [
+        { "id": "int-ex-cs-2027-01", "startDate": "2027-01-18T00:00:00.000Z", "applicationDeadline": "2026-11-15T23:59:00.000Z", "status": "open", "capacity": 60, "provenance": { "sourceUpdatedAt": "2026-09-04T06:00:00.000Z", "verifiedAt": "2026-09-04T06:05:00.000Z", "expiresAt": "2026-12-04T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:intakes/msc-cs/2027-01", "reviewedBy": null } },
+        { "id": "int-ex-cs-2027-09", "startDate": "2027-09-20T00:00:00.000Z", "applicationDeadline": "2027-07-31T23:59:00.000Z", "status": "scheduled", "capacity": 180, "provenance": { "sourceUpdatedAt": "2026-09-04T06:00:00.000Z", "verifiedAt": "2026-09-04T06:05:00.000Z", "expiresAt": "2026-12-04T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:intakes/msc-cs/2027-09", "reviewedBy": null } }
+      ]
+    },
+    {
+      "id": "prog-ex-bsc-ds",
+      "programKey": "example-bsc-data-science",
+      "institutionId": "inst-example",
+      "campusId": "camp-example-riverside",
+      "name": "BSc Data Science",
+      "level": "undergraduate",
+      "field": "Data science",
+      "durationMonths": 36,
+      "studyMode": "full_time",
+      "description": "Three-year undergraduate degree in statistics, programming and data engineering, with an optional placement year.",
+      "version": 4,
+      "effectiveFrom": "2026-08-01T00:00:00.000Z",
+      "provenance": { "sourceUpdatedAt": "2026-09-04T06:00:00.000Z", "verifiedAt": "2026-09-04T06:05:00.000Z", "expiresAt": "2026-12-04T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:programmes/bsc-ds@v4", "reviewedBy": null },
+      "requirements": [
+        { "id": "req-ex-ds-1", "ruleType": "academic_qualification", "humanSummary": "A completed secondary-school leaving qualification.", "sourceRef": "example-api:requirements/bsc-ds#qualification", "ruleJson": { "ruleType": "academic_qualification", "level": "high_school", "countries": [] } },
+        { "id": "req-ex-ds-2", "ruleType": "english_language", "humanSummary": "IELTS Academic 6.0 overall with no band below 5.5.", "sourceRef": "example-api:requirements/bsc-ds#english", "ruleJson": { "ruleType": "english_language", "test": "ielts", "overallMinimum": 6, "bandMinimums": { "writing": 5.5 } } },
+        { "id": "req-ex-ds-3", "ruleType": "age_minimum", "humanSummary": "You must be 17 or older on the first day of teaching.", "sourceRef": "example-api:requirements/bsc-ds#age", "ruleJson": { "ruleType": "age_minimum", "years": 17 } }
+      ],
+      "fees": { "tuitionMinor": 1980000, "tuitionCurrency": "GBP", "applicationFeeMinor": 0, "applicationFeeCurrency": "GBP", "depositMinor": 200000, "depositCurrency": "GBP", "provenance": { "sourceUpdatedAt": "2026-09-04T06:00:00.000Z", "verifiedAt": "2026-09-04T06:05:00.000Z", "expiresAt": "2026-11-04T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:fees/bsc-ds@2026", "reviewedBy": null } },
+      "intakes": [
+        { "id": "int-ex-ds-2027-09", "startDate": "2027-09-20T00:00:00.000Z", "applicationDeadline": "2027-06-30T23:59:00.000Z", "status": "scheduled", "capacity": 120, "provenance": { "sourceUpdatedAt": "2026-09-04T06:00:00.000Z", "verifiedAt": "2026-09-04T06:05:00.000Z", "expiresAt": "2026-12-04T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:intakes/bsc-ds/2027-09", "reviewedBy": null } }
+      ]
+    },
+    {
+      "id": "prog-ex-msc-ph",
+      "programKey": "example-msc-public-health",
+      "institutionId": "inst-example",
+      "campusId": "camp-example-main",
+      "name": "MSc Public Health",
+      "level": "postgraduate_taught",
+      "field": "Public health",
+      "durationMonths": 12,
+      "studyMode": "full_time",
+      "description": "Epidemiology, health economics and policy, with a practice-based project in the second semester.",
+      "version": 3,
+      "effectiveFrom": "2026-08-01T00:00:00.000Z",
+      "provenance": { "sourceUpdatedAt": "2026-08-28T06:00:00.000Z", "verifiedAt": "2026-08-28T06:05:00.000Z", "expiresAt": "2026-11-28T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:programmes/msc-ph@v3", "reviewedBy": null },
+      "requirements": [
+        { "id": "req-ex-ph-1", "ruleType": "academic_qualification", "humanSummary": "A bachelor's degree in a health, life-science or social-science subject.", "sourceRef": "example-api:requirements/msc-ph#qualification", "ruleJson": { "ruleType": "academic_qualification", "level": "bachelors", "countries": [] } },
+        { "id": "req-ex-ph-2", "ruleType": "work_experience", "humanSummary": "At least 12 months of work in a health or care setting.", "sourceRef": "example-api:requirements/msc-ph#experience", "ruleJson": { "ruleType": "work_experience", "months": 12, "field": null } },
+        { "id": "req-ex-ph-3", "ruleType": "english_language", "humanSummary": "IELTS Academic 7.0 overall with no band below 6.5.", "sourceRef": "example-api:requirements/msc-ph#english", "ruleJson": { "ruleType": "english_language", "test": "ielts", "overallMinimum": 7, "bandMinimums": { "writing": 6.5, "speaking": 6.5 } } }
+      ],
+      "fees": { "tuitionMinor": 2100000, "tuitionCurrency": "GBP", "applicationFeeMinor": 6000, "applicationFeeCurrency": "GBP", "depositMinor": 400000, "depositCurrency": "GBP", "provenance": { "sourceUpdatedAt": "2026-08-28T06:00:00.000Z", "verifiedAt": "2026-08-28T06:05:00.000Z", "expiresAt": "2026-10-28T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:fees/msc-ph@2026", "reviewedBy": null } },
+      "intakes": [
+        { "id": "int-ex-ph-2027-01", "startDate": "2027-01-18T00:00:00.000Z", "applicationDeadline": "2026-10-01T23:59:00.000Z", "status": "closing_soon", "capacity": 40, "provenance": { "sourceUpdatedAt": "2026-08-28T06:00:00.000Z", "verifiedAt": "2026-08-28T06:05:00.000Z", "expiresAt": "2026-11-28T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:intakes/msc-ph/2027-01", "reviewedBy": null } }
+      ]
+    },
+    {
+      "id": "prog-ex-found-eng",
+      "programKey": "example-foundation-engineering",
+      "institutionId": "inst-example",
+      "campusId": "camp-example-riverside",
+      "name": "International Foundation in Engineering",
+      "level": "foundation",
+      "field": "Engineering",
+      "durationMonths": 9,
+      "studyMode": "full_time",
+      "description": "Nine-month preparation year with guaranteed progression review onto an engineering bachelor's degree at the same university.",
+      "version": 2,
+      "effectiveFrom": "2026-08-01T00:00:00.000Z",
+      "provenance": { "sourceUpdatedAt": "2026-09-01T06:00:00.000Z", "verifiedAt": "2026-09-01T06:05:00.000Z", "expiresAt": "2026-12-01T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:programmes/found-eng@v2", "reviewedBy": null },
+      "requirements": [
+        { "id": "req-ex-fe-1", "ruleType": "academic_qualification", "humanSummary": "A completed secondary-school leaving qualification with mathematics.", "sourceRef": "example-api:requirements/found-eng#qualification", "ruleJson": { "ruleType": "academic_qualification", "level": "high_school", "countries": [] } },
+        { "id": "req-ex-fe-2", "ruleType": "english_language", "humanSummary": "IELTS Academic 5.5 overall with no band below 5.0.", "sourceRef": "example-api:requirements/found-eng#english", "ruleJson": { "ruleType": "english_language", "test": "ielts", "overallMinimum": 5.5, "bandMinimums": { "writing": 5 } } }
+      ],
+      "fees": { "tuitionMinor": 1450000, "tuitionCurrency": "GBP", "applicationFeeMinor": 0, "applicationFeeCurrency": "GBP", "depositMinor": 150000, "depositCurrency": "GBP", "provenance": { "sourceUpdatedAt": "2026-09-01T06:00:00.000Z", "verifiedAt": "2026-09-01T06:05:00.000Z", "expiresAt": "2026-11-01T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:fees/found-eng@2026", "reviewedBy": null } },
+      "intakes": [
+        { "id": "int-ex-fe-2027-01", "startDate": "2027-01-11T00:00:00.000Z", "applicationDeadline": "2026-12-05T23:59:00.000Z", "status": "open", "capacity": 90, "provenance": { "sourceUpdatedAt": "2026-09-01T06:00:00.000Z", "verifiedAt": "2026-09-01T06:05:00.000Z", "expiresAt": "2026-12-01T06:05:00.000Z", "syncState": "synced", "sourceRef": "example-api:intakes/found-eng/2027-01", "reviewedBy": null } }
+      ]
+    },
+    {
+      "id": "prog-no-meng-mech",
+      "programKey": "northern-meng-mechanical-engineering",
+      "institutionId": "inst-northern",
+      "campusId": "camp-northern-main",
+      "name": "MEng Mechanical Engineering",
+      "level": "undergraduate",
+      "field": "Engineering",
+      "durationMonths": 48,
+      "studyMode": "full_time",
+      "description": "Four-year integrated master's with an industrial year and a chartered-engineer accreditation route.",
+      "version": 5,
+      "effectiveFrom": "2026-08-01T00:00:00.000Z",
+      "provenance": { "sourceUpdatedAt": "2026-08-19T06:00:00.000Z", "verifiedAt": "2026-08-19T06:05:00.000Z", "expiresAt": "2026-11-19T06:05:00.000Z", "syncState": "synced", "sourceRef": "northern-feed:2026-08-19.csv#row-14", "reviewedBy": "J. Ferreira (Admissions)" },
+      "requirements": [
+        { "id": "req-no-me-1", "ruleType": "academic_qualification", "humanSummary": "A secondary-school qualification including mathematics and physics.", "sourceRef": "northern-feed:2026-08-19.csv#row-14", "ruleJson": { "ruleType": "academic_qualification", "level": "high_school", "countries": [] } },
+        { "id": "req-no-me-2", "ruleType": "english_language", "humanSummary": "IELTS Academic 6.0 overall with no band below 5.5.", "sourceRef": "northern-feed:2026-08-19.csv#row-14", "ruleJson": { "ruleType": "english_language", "test": "ielts", "overallMinimum": 6, "bandMinimums": { "writing": 5.5 } } },
+        { "id": "req-no-me-3", "ruleType": "interview", "humanSummary": "A short online interview with the admissions tutor.", "sourceRef": "northern-feed:2026-08-19.csv#row-14", "ruleJson": { "ruleType": "interview", "mode": "online" } }
+      ],
+      "fees": { "tuitionMinor": 1780000, "tuitionCurrency": "GBP", "applicationFeeMinor": 0, "applicationFeeCurrency": "GBP", "depositMinor": 250000, "depositCurrency": "GBP", "provenance": { "sourceUpdatedAt": "2026-08-19T06:00:00.000Z", "verifiedAt": "2026-08-19T06:05:00.000Z", "expiresAt": "2026-10-19T06:05:00.000Z", "syncState": "synced", "sourceRef": "northern-feed:2026-08-19.csv#row-14", "reviewedBy": "J. Ferreira (Admissions)" } },
+      "intakes": [
+        { "id": "int-no-me-2027-09", "startDate": "2027-09-27T00:00:00.000Z", "applicationDeadline": "2027-06-30T23:59:00.000Z", "status": "scheduled", "capacity": 75, "provenance": { "sourceUpdatedAt": "2026-08-19T06:00:00.000Z", "verifiedAt": "2026-08-19T06:05:00.000Z", "expiresAt": "2026-11-19T06:05:00.000Z", "syncState": "synced", "sourceRef": "northern-feed:2026-08-19.csv#row-14", "reviewedBy": "J. Ferreira (Admissions)" } }
+      ]
+    },
+    {
+      "id": "prog-no-msc-cyber",
+      "programKey": "northern-msc-cyber-security",
+      "institutionId": "inst-northern",
+      "campusId": "camp-northern-main",
+      "name": "MSc Cyber Security",
+      "level": "postgraduate_taught",
+      "field": "Computer science",
+      "durationMonths": 12,
+      "studyMode": "full_time",
+      "description": "Applied security master's with a penetration-testing lab and an industry-supervised project.",
+      "version": 6,
+      "effectiveFrom": "2026-08-01T00:00:00.000Z",
+      "provenance": { "sourceUpdatedAt": "2026-06-30T06:00:00.000Z", "verifiedAt": "2026-06-30T06:05:00.000Z", "expiresAt": "2026-09-30T06:05:00.000Z", "syncState": "stale", "sourceRef": "northern-feed:2026-06-30.csv#row-22", "reviewedBy": "J. Ferreira (Admissions)" },
+      "requirements": [
+        { "id": "req-no-cy-1", "ruleType": "academic_qualification", "humanSummary": "A bachelor's degree in computing, engineering or mathematics.", "sourceRef": "northern-feed:2026-06-30.csv#row-22", "ruleJson": { "ruleType": "academic_qualification", "level": "bachelors", "countries": [] } },
+        { "id": "req-no-cy-2", "ruleType": "english_language", "humanSummary": "IELTS Academic 6.5 overall with no band below 6.0.", "sourceRef": "northern-feed:2026-06-30.csv#row-22", "ruleJson": { "ruleType": "english_language", "test": "ielts", "overallMinimum": 6.5, "bandMinimums": { "writing": 6 } } }
+      ],
+      "fees": { "tuitionMinor": 1990000, "tuitionCurrency": "GBP", "applicationFeeMinor": 0, "applicationFeeCurrency": "GBP", "depositMinor": 250000, "depositCurrency": "GBP", "provenance": { "sourceUpdatedAt": "2026-06-30T06:00:00.000Z", "verifiedAt": "2026-06-30T06:05:00.000Z", "expiresAt": "2026-08-30T06:05:00.000Z", "syncState": "stale", "sourceRef": "northern-feed:2026-06-30.csv#row-22", "reviewedBy": "J. Ferreira (Admissions)" } },
+      "intakes": [
+        { "id": "int-no-cy-2027-01", "startDate": "2027-01-25T00:00:00.000Z", "applicationDeadline": "2026-11-30T23:59:00.000Z", "status": "open", "capacity": 45, "provenance": { "sourceUpdatedAt": "2026-06-30T06:00:00.000Z", "verifiedAt": "2026-06-30T06:05:00.000Z", "expiresAt": "2026-09-30T06:05:00.000Z", "syncState": "stale", "sourceRef": "northern-feed:2026-06-30.csv#row-22", "reviewedBy": "J. Ferreira (Admissions)" } }
+      ]
+    },
+    {
+      "id": "prog-no-msc-supply",
+      "programKey": "northern-msc-supply-chain",
+      "institutionId": "inst-northern",
+      "campusId": "camp-northern-main",
+      "name": "MSc Supply Chain Management",
+      "level": "postgraduate_taught",
+      "field": "Business and management",
+      "durationMonths": 12,
+      "studyMode": "part_time",
+      "description": "Part-time master's for people already working in logistics, taught in evening blocks.",
+      "version": 2,
+      "effectiveFrom": "2026-08-01T00:00:00.000Z",
+      "provenance": { "sourceUpdatedAt": "2026-08-19T06:00:00.000Z", "verifiedAt": "2026-08-19T06:05:00.000Z", "expiresAt": "2026-11-19T06:05:00.000Z", "syncState": "synced", "sourceRef": "northern-feed:2026-08-19.csv#row-31", "reviewedBy": "J. Ferreira (Admissions)" },
+      "requirements": [
+        { "id": "req-no-sc-1", "ruleType": "academic_qualification", "humanSummary": "A bachelor's degree in any subject.", "sourceRef": "northern-feed:2026-08-19.csv#row-31", "ruleJson": { "ruleType": "academic_qualification", "level": "bachelors", "countries": [] } },
+        { "id": "req-no-sc-2", "ruleType": "work_experience", "humanSummary": "At least 24 months in a logistics, procurement or operations role.", "sourceRef": "northern-feed:2026-08-19.csv#row-31", "ruleJson": { "ruleType": "work_experience", "months": 24, "field": null } },
+        { "id": "req-no-sc-3", "ruleType": "document_required", "humanSummary": "A CV covering your work history.", "sourceRef": "northern-feed:2026-08-19.csv#row-31", "ruleJson": { "ruleType": "document_required", "documentType": "cv", "certified": false } }
+      ],
+      "fees": { "tuitionMinor": 1250000, "tuitionCurrency": "GBP", "applicationFeeMinor": 0, "applicationFeeCurrency": "GBP", "depositMinor": 100000, "depositCurrency": "GBP", "provenance": { "sourceUpdatedAt": "2026-08-19T06:00:00.000Z", "verifiedAt": "2026-08-19T06:05:00.000Z", "expiresAt": "2026-10-19T06:05:00.000Z", "syncState": "synced", "sourceRef": "northern-feed:2026-08-19.csv#row-31", "reviewedBy": "J. Ferreira (Admissions)" } },
+      "intakes": [
+        { "id": "int-no-sc-2027-02", "startDate": "2027-02-08T00:00:00.000Z", "applicationDeadline": "2026-12-20T23:59:00.000Z", "status": "open", "capacity": 30, "provenance": { "sourceUpdatedAt": "2026-08-19T06:00:00.000Z", "verifiedAt": "2026-08-19T06:05:00.000Z", "expiresAt": "2026-11-19T06:05:00.000Z", "syncState": "synced", "sourceRef": "northern-feed:2026-08-19.csv#row-31", "reviewedBy": "J. Ferreira (Admissions)" } }
+      ]
+    },
+    {
+      "id": "prog-nw-msc-ai",
+      "programKey": "northwind-msc-artificial-intelligence",
+      "institutionId": "inst-northwind",
+      "campusId": "camp-northwind-main",
+      "name": "MSc Artificial Intelligence",
+      "level": "postgraduate_taught",
+      "field": "Computer science",
+      "durationMonths": 24,
+      "studyMode": "full_time",
+      "description": "Two-year research-oriented master's with a mandatory internship semester.",
+      "version": 1,
+      "effectiveFrom": "2026-09-01T00:00:00.000Z",
+      "provenance": { "sourceUpdatedAt": "2026-09-08T06:00:00.000Z", "verifiedAt": null, "expiresAt": null, "syncState": "pending_review", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "reviewedBy": null },
+      "requirements": [
+        { "id": "req-nw-ai-1", "ruleType": "academic_qualification", "humanSummary": "A bachelor's degree in computer science, mathematics or a closely related field.", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "ruleJson": { "ruleType": "academic_qualification", "level": "bachelors", "countries": [] } },
+        { "id": "req-nw-ai-2", "ruleType": "english_language", "humanSummary": "IELTS Academic 6.5 overall with no band below 6.0.", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "ruleJson": { "ruleType": "english_language", "test": "ielts", "overallMinimum": 6.5, "bandMinimums": { "writing": 6 } } },
+        { "id": "req-nw-ai-3", "ruleType": "gpa_minimum", "humanSummary": "A weighted average of at least 70 per cent in your bachelor's degree.", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "ruleJson": { "ruleType": "gpa_minimum", "scale": "percentage", "comparison": "gte", "value": 70 } }
+      ],
+      "fees": { "tuitionMinor": 1800000, "tuitionCurrency": "EUR", "applicationFeeMinor": 10000, "applicationFeeCurrency": "EUR", "depositMinor": null, "depositCurrency": null, "provenance": { "sourceUpdatedAt": "2026-09-08T06:00:00.000Z", "verifiedAt": null, "expiresAt": null, "syncState": "pending_review", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "reviewedBy": null } },
+      "intakes": [
+        { "id": "int-nw-ai-2027-09", "startDate": "2027-09-01T00:00:00.000Z", "applicationDeadline": "2027-05-01T23:59:00.000Z", "status": "scheduled", "capacity": null, "provenance": { "sourceUpdatedAt": "2026-09-08T06:00:00.000Z", "verifiedAt": null, "expiresAt": null, "syncState": "pending_review", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "reviewedBy": null } }
+      ]
+    },
+    {
+      "id": "prog-nw-bsc-ib",
+      "programKey": "northwind-bsc-international-business",
+      "institutionId": "inst-northwind",
+      "campusId": "camp-northwind-main",
+      "name": "BSc International Business",
+      "level": "undergraduate",
+      "field": "Business and management",
+      "durationMonths": 36,
+      "studyMode": "full_time",
+      "description": "English-taught bachelor's with a compulsory exchange semester and a Dutch-language elective track.",
+      "version": 1,
+      "effectiveFrom": "2026-09-01T00:00:00.000Z",
+      "provenance": { "sourceUpdatedAt": "2026-09-08T06:00:00.000Z", "verifiedAt": null, "expiresAt": null, "syncState": "pending_review", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "reviewedBy": null },
+      "requirements": [
+        { "id": "req-nw-ib-1", "ruleType": "academic_qualification", "humanSummary": "A secondary-school leaving qualification recognised for university entry.", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "ruleJson": { "ruleType": "academic_qualification", "level": "high_school", "countries": [] } },
+        { "id": "req-nw-ib-2", "ruleType": "english_language", "humanSummary": "IELTS Academic 6.0 overall with no band below 5.5.", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "ruleJson": { "ruleType": "english_language", "test": "ielts", "overallMinimum": 6, "bandMinimums": { "writing": 5.5 } } }
+      ],
+      "fees": { "tuitionMinor": 1150000, "tuitionCurrency": "EUR", "applicationFeeMinor": 10000, "applicationFeeCurrency": "EUR", "depositMinor": null, "depositCurrency": null, "provenance": { "sourceUpdatedAt": "2026-09-08T06:00:00.000Z", "verifiedAt": null, "expiresAt": null, "syncState": "pending_review", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "reviewedBy": null } },
+      "intakes": [
+        { "id": "int-nw-ib-2027-09", "startDate": "2027-09-01T00:00:00.000Z", "applicationDeadline": "2027-05-01T23:59:00.000Z", "status": "scheduled", "capacity": null, "provenance": { "sourceUpdatedAt": "2026-09-08T06:00:00.000Z", "verifiedAt": null, "expiresAt": null, "syncState": "pending_review", "sourceRef": "northwind-manual:onboarding-sheet-2026-09", "reviewedBy": null } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Phase 2 delivery status for Modex Apply — the running app, acceptance criteria, measured latency, and the decisions worth arguing with.">
+<meta name="color-scheme" content="light dark">
+<title>Modex Apply — build board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    /* Red Velvet — the product's own tokens (packages/ui/src/tokens/palette.ts). */
+    --brand: #A72740;
+    --brand-700: #8A1E33;
+    --brand-50: #FDF3F5;
+    --ground: #FBF9F9;
+    --surface: #FFFFFF;
+    --raised: #F3EFF0;
+    --line: #E4DDDF;
+    --line-strong: #C7BCBF;
+    --ink: #1A1416;
+    --ink-mid: #5A4F52;
+    --ink-soft: #8C7E82;
+    /* Semantic, deliberately separate from the accent. */
+    --done: #1F7A4D;
+    --partial: #8A5A0F;
+    --partial-fill: #B5791C;
+    --waiting: #8C7E82;
+    --shadow: 0 1px 2px rgba(48, 10, 17, .06), 0 8px 24px -12px rgba(48, 10, 17, .12);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --brand: #DC6980;
+      --brand-700: #EA9BAB;
+      --brand-50: #300A11;
+      --ground: #14100F;
+      --surface: #1E1819;
+      --raised: #241E1F;
+      --line: #3A3032;
+      --line-strong: #544749;
+      --ink: #F2EBEC;
+      --ink-mid: #BCAFB2;
+      --ink-soft: #9A8D90;
+      --done: #4FBF87;
+      --partial: #E0A93F;
+      --partial-fill: #E0A93F;
+      --waiting: #9A8D90;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --brand: #DC6980;
+    --brand-700: #EA9BAB;
+    --brand-50: #300A11;
+    --ground: #14100F;
+    --surface: #1E1819;
+    --raised: #241E1F;
+    --line: #3A3032;
+    --line-strong: #544749;
+    --ink: #F2EBEC;
+    --ink-mid: #BCAFB2;
+    --ink-soft: #9A8D90;
+    --done: #4FBF87;
+    --partial: #E0A93F;
+    --partial-fill: #E0A93F;
+    --waiting: #9A8D90;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .6);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; }
+  img { max-width: 100%; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding-inline: 24px;
+    padding-block: 48px 96px;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  h1 {
+    font-size: clamp(30px, 4.4vw, 42px);
+    line-height: 1.1;
+    letter-spacing: -.022em;
+    font-weight: 700;
+    margin: 10px 0 0;
+    text-wrap: balance;
+  }
+
+  .lede {
+    margin: 14px 0 0;
+    max-width: 64ch;
+    font-size: 17px;
+    color: var(--ink-mid);
+  }
+
+  h2 {
+    font-size: 20px;
+    letter-spacing: -.012em;
+    font-weight: 650;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  section { margin-top: 56px; }
+
+  .sec-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px 20px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+
+  .sec-head p {
+    margin: 0;
+    color: var(--ink-mid);
+    font-size: 14px;
+    max-width: 56ch;
+  }
+
+  /* ---- Phase rail: 0-7 is a real delivery sequence, so the numbers mean something ---- */
+  .rail {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    margin-top: 32px;
+  }
+
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 12px 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .phase[data-state="shipped"] { border-color: color-mix(in srgb, var(--done) 45%, var(--line)); }
+  .phase[data-state="current"] {
+    border-color: var(--brand);
+    background: var(--brand-50);
+  }
+
+  .phase-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .phase-num {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+
+  .phase[data-state="current"] .phase-num { color: var(--brand); }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--line-strong);
+    flex: none;
+  }
+
+  .phase[data-state="shipped"] .dot { background: var(--done); }
+  .phase[data-state="current"] .dot { background: var(--brand); }
+
+  .phase-name {
+    font-size: 12.5px;
+    line-height: 1.3;
+    font-weight: 550;
+    color: var(--ink);
+  }
+
+  .phase[data-state="queued"] .phase-name { color: var(--ink-soft); font-weight: 450; }
+
+  /* ---- Metric tiles: these four figures are the point of the page ---- */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .metric {
+    background: var(--surface);
+    padding: 18px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .metric-val {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+  }
+
+  .metric-label { font-size: 13px; font-weight: 550; }
+  .metric-note { font-size: 12.5px; color: var(--ink-soft); }
+
+  /* ---- Live app gallery ---- */
+  .shot-controls {
+    display: flex;
+    gap: 6px;
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 3px;
+  }
+
+  .shot-controls button {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 550;
+    border: 0;
+    background: transparent;
+    color: var(--ink-mid);
+    padding: 5px 13px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .shot-controls button[aria-pressed="true"] {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+
+  .shot-controls button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  .shots {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+    gap: 24px;
+  }
+
+  figure {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .frame {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface);
+    line-height: 0;
+  }
+
+  .frame img { width: 100%; max-width: 100%; height: auto; display: block; }
+
+  figcaption { display: flex; flex-direction: column; gap: 2px; }
+  .cap-title { font-size: 14px; font-weight: 600; }
+  .cap-note { font-size: 13px; color: var(--ink-mid); }
+
+  .phone { max-width: 300px; }
+
+  /* ---- Criteria table ---- */
+  .table-scroll { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  caption { text-align: left; }
+
+  th, td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--line-strong);
+    padding-block: 8px;
+  }
+
+  tbody th { font-weight: 500; color: var(--ink); }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+  td.note { color: var(--ink-mid); }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    font-size: 12.5px;
+    font-weight: 550;
+    padding: 2px 9px 2px 7px;
+    border-radius: 999px;
+    border: 1px solid;
+  }
+
+  .chip[data-s="done"] { color: var(--done); border-color: color-mix(in srgb, var(--done) 40%, transparent); }
+  .chip[data-s="partial"] { color: var(--partial); border-color: color-mix(in srgb, var(--partial-fill) 45%, transparent); }
+  .chip::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+  }
+
+  /* ---- Disclosure blocks: deviations and gaps ---- */
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    gap: 28px 40px;
+  }
+
+  .item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-left: 14px;
+    border-left: 2px solid var(--line-strong);
+  }
+
+  .item[data-flag="revisit"] { border-left-color: var(--partial-fill); }
+  .item p { margin: 0; font-size: 14px; color: var(--ink-mid); }
+
+  .bug-list { display: flex; flex-direction: column; gap: 0; }
+
+  .bug {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: 6px 28px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+
+  .bug:last-child { border-bottom: 0; }
+  .bug b { font-weight: 600; }
+  .bug span { color: var(--ink-mid); }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: .88em;
+    background: var(--raised);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  a { color: var(--brand); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  .footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .footer span { display: inline-flex; gap: 7px; }
+
+  .kbd {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-mid);
+  }
+
+  .callout {
+    margin-top: 24px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--partial-fill);
+    border-radius: 4px;
+    background: var(--surface);
+    font-size: 14px;
+    color: var(--ink-mid);
+  }
+
+  .callout b { color: var(--ink); }
+
+  @media (max-width: 780px) {
+    .rail { grid-template-columns: repeat(4, 1fr); }
+    .bug { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <p style="margin:20px 0 0;padding:11px 14px;border-left:3px solid var(--brand);background:var(--brand-50);border-radius:0 6px 6px 0;font-size:.875rem">
+    This is the delivery board. <strong><a href="./">The platform itself is here</a></strong> — the catalogue,
+    the guide network, the application journey and the admin consoles, running in your browser.
+  </p>
+
+  <header>
+    <p class="eyebrow">Modex Apply · epic #1 · build board</p>
+    <h1>Phase 2 ships the student half of the loop</h1>
+    <p class="lede">
+      A prospective student can now build a profile, upload documents that cannot leave
+      unscanned, search a catalogue that explains its own ordering, and get an eligibility
+      answer with a reason attached. Phases 0 and 1 built the platform and the catalogue;
+      this is the half that makes them usable by the person they exist for.
+    </p>
+    <p class="lede">
+      This board covers Phase 2. Phase 3 — the Verified Student Guide network, its
+      anti-scam pipeline and the reward model that cannot be tied to an admission
+      outcome — has since shipped on the same terms; what it does, and what it
+      deliberately does not do, is written up in <code>docs/phases.md</code>.
+    </p>
+  </header>
+
+  <div class="rail" role="list" aria-label="Delivery phases">
+    <div class="phase" data-state="shipped" role="listitem">
+      <div class="phase-top"><span class="phase-num">00</span><span class="dot"></span></div>
+      <span class="phase-name">Foundation &amp; design system</span>
+    </div>
+    <div class="phase" data-state="shipped" role="listitem">
+      <div class="phase-top"><span class="phase-num">01</span><span class="dot"></span></div>
+      <span class="phase-name">Institutions &amp; catalogue</span>
+    </div>
+    <div class="phase" data-state="shipped" role="listitem">
+      <div class="phase-top"><span class="phase-num">02</span><span class="dot"></span></div>
+      <span class="phase-name">Student experience</span>
+    </div>
+    <div class="phase" data-state="current" role="listitem">
+      <div class="phase-top"><span class="phase-num">03</span><span class="dot"></span></div>
+      <span class="phase-name">Student Guide network</span>
+    </div>
+    <div class="phase" data-state="queued" role="listitem">
+      <div class="phase-top"><span class="phase-num">04</span><span class="dot"></span></div>
+      <span class="phase-name">Applications &amp; connectors</span>
+    </div>
+    <div class="phase" data-state="queued" role="listitem">
+      <div class="phase-top"><span class="phase-num">05</span><span class="dot"></span></div>
+      <span class="phase-name">Offers &amp; scholarships</span>
+    </div>
+    <div class="phase" data-state="queued" role="listitem">
+      <div class="phase-top"><span class="phase-num">06</span><span class="dot"></span></div>
+      <span class="phase-name">Admin portals</span>
+    </div>
+    <div class="phase" data-state="queued" role="listitem">
+      <div class="phase-top"><span class="phase-num">07</span><span class="dot"></span></div>
+      <span class="phase-name">Hardening &amp; pilot</span>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <h2>Where it stands</h2>
+      <p>Measured on the branch, not estimated.</p>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <span class="metric-val">339</span>
+        <span class="metric-label">Tests passing</span>
+        <span class="metric-note">276 unit · 57 integration · 6 latency</span>
+      </div>
+      <div class="metric">
+        <span class="metric-val">105<span style="font-size:15px">ms</span></span>
+        <span class="metric-label">Search p95</span>
+        <span class="metric-note">2,000 programmes · 500 ms budget</span>
+      </div>
+      <div class="metric">
+        <span class="metric-val">7</span>
+        <span class="metric-label">CI gates green</span>
+        <span class="metric-note">Contrast, vendor colour, migrations, secrets…</span>
+      </div>
+      <div class="metric">
+        <span class="metric-val">7</span>
+        <span class="metric-label">Bugs found &amp; fixed</span>
+        <span class="metric-note">None of them by the test suite</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>The running app</h2>
+      <div class="shot-controls" role="group" aria-label="Theme">
+        <button type="button" id="btn-light" aria-pressed="true">Light</button>
+        <button type="button" id="btn-dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+
+    <div class="shots">
+      <figure>
+        <div class="frame"><img id="shot-search" alt="Programme search with a filter rail showing country, level, subject, institution and language facets with counts, and two result cards." src=""></div>
+        <figcaption>
+          <span class="cap-title">Search</span>
+          <span class="cap-note">Facet counts come from the query with that facet excluded, so the other options stay clickable. “Tuition not published” is stated, never estimated.</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="frame"><img id="shot-zero" alt="Zero-result state explaining that nothing matches all filters at once, with one relaxable filter offered and the count it would recover." src=""></div>
+        <figcaption>
+          <span class="cap-title">Zero results</span>
+          <span class="cap-note">Never a bare “0 results”. Only the filter that actually recovers results is offered — and the ticked filters stay in the rail at count 0, so they can be undone.</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="frame"><img id="shot-detail" alt="Programme detail page showing provenance, entry requirements, cost and deadline, and an eligibility panel inviting sign-in." src=""></div>
+        <figcaption>
+          <span class="cap-title">Programme &amp; eligibility</span>
+          <span class="cap-note">Signed out, the panel renders no verdict at all — an absence must never read as a rejection — and names who actually decides.</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="frame"><img id="shot-home" alt="Modex Apply landing page with the headline and trust cards." src=""></div>
+        <figcaption>
+          <span class="cap-title">Landing</span>
+          <span class="cap-note">Phase 1 surface, shown here because it carries the same tokens the new pages are built from.</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="frame phone"><img id="shot-mobile" alt="Programme search at phone width, with the filter rail collapsed behind a Filters button." src=""></div>
+        <figcaption>
+          <span class="cap-title">Search at 390px</span>
+          <span class="cap-note">The rail collapses into a sheet with a real focus trap and focus restore.</span>
+        </figcaption>
+      </figure>
+    </div>
+
+    <div class="callout">
+      <b>These are screenshots, not a hosted deployment.</b> The app needs PostgreSQL, the API,
+      Redis and object storage to run, and no environment has been stood up yet —
+      <code>infra/</code> is still a Terraform skeleton. Everything above was captured from the
+      stack running locally against a real database. A public URL waits on Phase 7.
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Acceptance criteria</h2>
+      <p>From issue #4. Two are partial, and both say why rather than rounding up.</p>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <caption class="eyebrow" style="padding-bottom:10px">Issue #4 · FR-001 – FR-006</caption>
+        <thead>
+          <tr>
+            <th scope="col">Criterion</th>
+            <th scope="col">State</th>
+            <th scope="col">Evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Register, profile, upload, search, filter, compare without losing state</th>
+            <td><span class="chip" data-s="partial">Partial</span></td>
+            <td class="note">All but shortlist, which has tables and no service behind them</td>
+          </tr>
+          <tr>
+            <th scope="row">Eligibility returns a structured explanation with a source per rule</th>
+            <td><span class="chip" data-s="done">Done</span></td>
+            <td class="note">The engine returns an explanation object and nothing else</td>
+          </tr>
+          <tr>
+            <th scope="row">An ineligible programme still appears, labelled with its failing rule</th>
+            <td><span class="chip" data-s="partial">Partial</span></td>
+            <td class="note">Never hidden; labelled on detail and compare, not the card</td>
+          </tr>
+          <tr>
+            <th scope="row">A malware positive is quarantined and unreachable from any payload</th>
+            <td><span class="chip" data-s="done">Done</span></td>
+            <td class="note">Enforced in <code>resolveForConnector</code>, not in the UI</td>
+          </tr>
+          <tr>
+            <th scope="row">A new version leaves prior versions intact and retrievable</th>
+            <td><span class="chip" data-s="done">Done</span></td>
+            <td class="note">No update path to a version's object key exists</td>
+          </tr>
+          <tr>
+            <th scope="row">p95 search under 500 ms, with the test in CI</th>
+            <td><span class="chip" data-s="done">Done</span></td>
+            <td class="note">Its own CI job; slowest common query 124 ms</td>
+          </tr>
+          <tr>
+            <th scope="row">Zero results always explain and offer a relaxable filter</th>
+            <td><span class="chip" data-s="done">Done</span></td>
+            <td class="note">Counts computed per dropped filter, so the suggestion is real</td>
+          </tr>
+          <tr>
+            <th scope="row">Signed URLs expire; an IDOR attempt is rejected and audited</th>
+            <td><span class="chip" data-s="done">Done</span></td>
+            <td class="note">404 without confirming existence, plus an audit event</td>
+          </tr>
+          <tr>
+            <th scope="row">WCAG 2.2 AA and keyboard operable in both themes</th>
+            <td><span class="chip" data-s="partial">Partial</span></td>
+            <td class="note">Contrast gated in CI; still no automated axe run on rendered pages</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Bugs found by running it</h2>
+      <p>Every one of these passed the test suite first.</p>
+    </div>
+    <div class="bug-list">
+      <div class="bug">
+        <b>A filter that narrowed to zero removed its own checkbox</b>
+        <span>The country facet vanished when nothing matched, so the filter causing the zero could only be undone with the back button.</span>
+      </div>
+      <div class="bug">
+        <b>Search fetched and ranked the whole result set twice</b>
+        <span>Once in the service, again inside the index query. Sorted-browse p95 fell from 271 ms to 124 ms.</span>
+      </div>
+      <div class="bug">
+        <b>A document rule demanded a profile it never reads</b>
+        <span>A student with an uploaded transcript was told “we need your profile” about the transcript.</span>
+      </div>
+      <div class="bug">
+        <b>The modal focus trap would have found nothing</b>
+        <span><code>offsetParent</code> is null inside a fixed-position ancestor, which is exactly what a sheet is.</span>
+      </div>
+      <div class="bug">
+        <b>A live facet count sat inside a checkbox's accessible name</b>
+        <span>The control announced itself differently every time a filter moved.</span>
+      </div>
+      <div class="bug">
+        <b>The consent guard read the wrong route parameter</b>
+        <span>A route addressed as <code>:documentId</code> silently degraded to a scope-only check.</span>
+      </div>
+      <div class="bug">
+        <b>The test harness pointed at a database nothing starts</b>
+        <span>Port 5433, no password; and the queue fake was never cleared between tests, so count assertions passed alone and failed in suite order.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Decisions worth arguing with</h2>
+      <p>Recorded rather than absorbed, so the next person can reopen them.</p>
+    </div>
+    <div class="cols">
+      <div class="item" data-flag="revisit">
+        <h3>The eligibility chip is not on the result card</h3>
+        <p>
+          Ineligible programmes are never hidden, which is the load-bearing half. The label
+          lives on detail and compare, where there is room for the rule, its source and the
+          remedy. But a student scanning thirty results will not open thirty pages — this is
+          the deviation most likely to be wrong.
+        </p>
+      </div>
+      <div class="item">
+        <h3>OpenSearch is a port, not a cluster</h3>
+        <p>
+          A JVM node buys nothing at a size where a faceted query answers in 13 ms, and it
+          would cost the fifteen-minute cold start. The honest limit: ranking happens in
+          process because it needs the student's profile, so this breaches the budget somewhere
+          north of 50,000 programmes. The latency job is what will say so.
+        </p>
+      </div>
+      <div class="item">
+        <h3>21st.dev blocks rebuilt, not installed</h3>
+        <p>
+          The registry is reachable now, but the account allows two component fetches a day
+          against fifteen named in the issue, and the code is Tailwind and Radix — neither of
+          which this repo has. Installing them is an architectural change, not a re-theme.
+        </p>
+      </div>
+      <div class="item">
+        <h3>The suggested third-party scanner is not wired in</h3>
+        <p>
+          The recommendation in the issue comments came from a non-collaborator with a
+          campaign-tagged link. Its actual advice — fail closed, enforce at the connector
+          boundary — was already the issue's own requirement, and is what the scanner port
+          implements. Its vendor is not.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Known gaps</h2>
+      <p>Left deliberately, not overlooked.</p>
+    </div>
+    <div class="cols">
+      <div class="item">
+        <h3>Shortlist and saved search</h3>
+        <p>Tables exist with nothing behind them. Compare works from URL parameters, which compares programmes but does not keep a list between sessions.</p>
+      </div>
+      <div class="item">
+        <h3>Retention is configured, not enforced</h3>
+        <p>Documents soft-delete so an application snapshot still resolves. The sweeper that removes objects past their window is not built.</p>
+      </div>
+      <div class="item">
+        <h3>No scheduler</h3>
+        <p>The freshness sweep and expiry reminders both need one. Queues and workers exist; nothing fires them periodically. True since Phase 1, now with a second consumer.</p>
+      </div>
+      <div class="item">
+        <h3>Grade conversion is five tables</h3>
+        <p>Each with a published source. Anything outside them returns “cannot judge” rather than an interpolation — the right failure, but a real limit.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    <span>Branch <b class="kbd">claude/phase-2-issues-3so5v9</b></span>
+    <span>Head <b class="kbd">3ea2dfb</b></span>
+    <span><a href="https://github.com/Delviss/ModexApply/pull/11">Pull request #11</a></span>
+    <span><a href="https://github.com/Delviss/ModexApply/issues/4">Issue #4</a></span>
+    <span><a href="https://github.com/Delviss/ModexApply/issues/1">Epic #1</a></span>
+  </div>
+</div>
+
+<script>
+  window.__SHOTS__ = {
+    'search-light': 'assets/search-light.jpg',
+    'search-dark': 'assets/search-dark.jpg',
+    'zero-light': 'assets/zero-light.jpg',
+    'zero-dark': 'assets/zero-dark.jpg',
+    'detail-light': 'assets/detail-light.jpg',
+    'detail-dark': 'assets/detail-dark.jpg',
+    'home-light': 'assets/home-light.jpg',
+    'home-dark': 'assets/home-dark.jpg',
+    'login-light': 'assets/login-light.jpg',
+    'login-dark': 'assets/login-dark.jpg',
+    'search-mobile': 'assets/search-mobile.jpg',
+  };
+</script>
+<script>
+  const SHOTS = window.__SHOTS__;
+  const targets = [
+    ['shot-search', 'search'],
+    ['shot-zero', 'zero'],
+    ['shot-detail', 'detail'],
+    ['shot-home', 'home'],
+  ];
+
+  function paint(theme) {
+    for (const [id, name] of targets) {
+      const img = document.getElementById(id);
+      if (img) img.src = SHOTS[name + '-' + theme] || '';
+    }
+    document.getElementById('btn-light').setAttribute('aria-pressed', String(theme === 'light'));
+    document.getElementById('btn-dark').setAttribute('aria-pressed', String(theme === 'dark'));
+  }
+
+  document.getElementById('btn-light').addEventListener('click', () => paint('light'));
+  document.getElementById('btn-dark').addEventListener('click', () => paint('dark'));
+
+  // Open on whichever theme the reader is already in, so the shots match the page.
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const stamped = document.documentElement.getAttribute('data-theme');
+  paint(stamped === 'dark' || (stamped !== 'light' && prefersDark) ? 'dark' : 'light');
+
+  const mobile = document.getElementById('shot-mobile');
+  if (mobile) mobile.src = SHOTS['search-mobile'] || '';
+</script>
+</body>
+</html>

@@ -12,12 +12,22 @@ relationship get separated:
 | Completing a correct application | Student, with an immutable submission record |
 | Practical answers about life at the university | Verified current students ("Student Guides") |
 
+**The platform is live at [delviss.github.io/ModexApply](https://delviss.github.io/ModexApply/)** — the
+catalogue, the eligibility engine, the guide network with its anti-scam pipeline, the
+application journey and the four admin consoles, running as a static build in your browser.
+See [docs/public-site.md](docs/public-site.md) for what that build is and, importantly, what its
+data is and is not. The delivery board that used to live at that URL moved to
+[/board.html](https://delviss.github.io/ModexApply/board.html).
+
 See [issue #1](https://github.com/Delviss/ModexApply/issues/1) for the delivery epic.
 
 ## Repository layout
 
 ```
 apps/
+  site/          The public build served at delviss.github.io/ModexApply — the
+                 product as a static bundle, importing the platform's own rule
+                 code rather than reimplementing it
   api/           NestJS + Prisma — platform core, catalogue, search, vault,
                  eligibility, the guide network, the anti-scam pipeline,
                  applications, the university connector layer, offers, the four
@@ -30,10 +40,14 @@ packages/
   contracts/     Shared domain contracts (money, errors, access, provenance…)
   ui/            Red Velvet design system — tokens, blocks, signature components
   config/        Shared TypeScript and ESLint configuration
+data/            The institution register — real universities entered by admin
+                 staff, identity facts only — and the sample catalogue the
+                 public build demonstrates the journey with
 infra/           Terraform, and the alert definitions
 scripts/         CI gates: contrast, vendor colour, migration safety, secrets,
                  and "every alert has a runbook"
-docs/            Architecture, design system, phase notes, security, privacy,
+docs/            The built public site (index.html, assets/, data/), plus
+                 architecture, design system, phase notes, security, privacy,
                  incident response, runbooks and the go/no-go checklist
 ```
 
@@ -45,6 +59,23 @@ make dev        # docker services + api + web, from a clean clone
 
 Full instructions, including the 15-minute cold-start path, are in
 [docs/getting-started.md](docs/getting-started.md).
+
+## The public site
+
+```bash
+pnpm site:serve   # build docs/ and serve it on http://localhost:4321
+pnpm site:build   # rebuild the committed bundle after changing apps/site/src
+pnpm site:test    # every route and the three core journeys, in a real browser
+```
+
+GitHub Pages serves `docs/` from the branch, so the built bundle is committed.
+CI runs `pnpm site:check`, which rebuilds into a temporary directory and fails
+if the published output has drifted from `apps/site/src` — the failure mode
+being a source change that never reaches the URL people visit.
+
+Entering universities is admin work with its own rules, documented in
+[docs/public-site.md](docs/public-site.md#the-institution-register): identity
+facts only, evidence per stage, and a verified badge that expires.
 
 ## The checks that matter
 

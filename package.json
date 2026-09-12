@@ -18,7 +18,11 @@
     "check:migrations": "node scripts/check-migration-safety.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:runbooks": "node scripts/check-runbooks.mjs",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:contrast && pnpm check:vendor-hex && pnpm check:migrations && pnpm check:secrets && pnpm check:runbooks && pnpm build"
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:contrast && pnpm check:vendor-hex && pnpm check:migrations && pnpm check:secrets && pnpm check:runbooks && pnpm site:check && pnpm build",
+    "site:build": "pnpm --filter @modex/site build",
+    "site:check": "pnpm --filter @modex/site check",
+    "site:serve": "pnpm --filter @modex/site serve",
+    "site:test": "pnpm --filter @modex/site test:browser"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -277,6 +277,38 @@ jobs:
         # printing the diagnosis.
         run: tail -n 100 /tmp/api.log /tmp/web.log
 
+  published-site:
+    name: The published site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # GitHub Pages serves `docs/` straight from the branch, so the built
+      # bundle is committed. This refuses a commit where the published site no
+      # longer matches `apps/site/src` — the failure mode being a source change
+      # that never reaches the URL people actually visit.
+      - name: The published site matches its source
+        run: pnpm site:check
+
+      - name: Install Chromium
+        run: pnpm --filter @modex/site exec playwright install --with-deps chromium
+
+      # A static bundle can compile and still be a blank page. This walks every
+      # route in a real browser and drives the three journeys the product's
+      # promises live in: a submission that only counts when it is confirmed,
+      # a scam attempt that is caught and evidenced, and a university entered
+      # against the evidence rules.
+      - name: Every route, and the journeys, in a real browser
+        run: pnpm site:test
+
   build:
     name: Build
     runs-on: ubuntu-latest

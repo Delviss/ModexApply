@@ -1,0 +1,50 @@
+{
+  "$comment": "The institution register — real universities entered by Modex admin staff as intake candidates. ONLY publicly verifiable identity facts are recorded here: name, country, city, official web domain. No tuition figure, deadline, programme or partnership claim is ever entered from a desk; those arrive from the institution itself and carry provenance. Every record therefore starts unverified at stage `submitted`, and the University console walks it forward against evidence. Edit through the admin console (docs site, Admin → University intake) and paste the exported JSON back here.",
+  "register": {
+    "maintainer": "Modex Trust — institution onboarding",
+    "updatedAt": "2026-09-12",
+    "policy": {
+      "enteredFacts": ["displayName", "country", "city", "domains", "websiteUrl"],
+      "neverEnteredFromADesk": ["legalName", "tuition", "applicationFee", "deposit", "intakeDates", "requirements", "partnershipScopes"],
+      "evidenceRequiredToAdvance": {
+        "identity_confirmed": "Legal entity confirmed against the national register of the awarding country.",
+        "domain_confirmed": "Official domain confirmed by a DNS TXT record published by the institution.",
+        "signatory_confirmed": "Authorised signatory verified on an address at that domain.",
+        "contracted": "Signed partnership contract on file, with scopes."
+      }
+    }
+  },
+  "institutions": [
+    { "id": "reg-gb-manchester", "displayName": "University of Manchester", "country": "GB", "city": "Manchester", "domains": ["manchester.ac.uk"], "websiteUrl": "https://www.manchester.ac.uk", "priority": "tier_1", "enteredAt": "2026-09-12" },
+    { "id": "reg-gb-leeds", "displayName": "University of Leeds", "country": "GB", "city": "Leeds", "domains": ["leeds.ac.uk"], "websiteUrl": "https://www.leeds.ac.uk", "priority": "tier_1", "enteredAt": "2026-09-12" },
+    { "id": "reg-gb-birmingham", "displayName": "University of Birmingham", "country": "GB", "city": "Birmingham", "domains": ["birmingham.ac.uk"], "websiteUrl": "https://www.birmingham.ac.uk", "priority": "tier_1", "enteredAt": "2026-09-12" },
+    { "id": "reg-gb-sheffield", "displayName": "University of Sheffield", "country": "GB", "city": "Sheffield", "domains": ["sheffield.ac.uk"], "websiteUrl": "https://www.sheffield.ac.uk", "priority": "tier_2", "enteredAt": "2026-09-12" },
+    { "id": "reg-gb-glasgow", "displayName": "University of Glasgow", "country": "GB", "city": "Glasgow", "domains": ["gla.ac.uk"], "websiteUrl": "https://www.gla.ac.uk", "priority": "tier_2", "enteredAt": "2026-09-12" },
+    { "id": "reg-gb-belfast", "displayName": "Queen's University Belfast", "country": "GB", "city": "Belfast", "domains": ["qub.ac.uk"], "websiteUrl": "https://www.qub.ac.uk", "priority": "tier_2", "enteredAt": "2026-09-12" },
+    { "id": "reg-gb-coventry", "displayName": "Coventry University", "country": "GB", "city": "Coventry", "domains": ["coventry.ac.uk"], "websiteUrl": "https://www.coventry.ac.uk", "priority": "tier_1", "enteredAt": "2026-09-12" },
+    { "id": "reg-gb-portsmouth", "displayName": "University of Portsmouth", "country": "GB", "city": "Portsmouth", "domains": ["port.ac.uk"], "websiteUrl": "https://www.port.ac.uk", "priority": "tier_2", "enteredAt": "2026-09-12" },
+
+    { "id": "reg-ie-ucd", "displayName": "University College Dublin", "country": "IE", "city": "Dublin", "domains": ["ucd.ie"], "websiteUrl": "https://www.ucd.ie", "priority": "tier_1", "enteredAt": "2026-09-12" },
+    { "id": "reg-ie-dcu", "displayName": "Dublin City University", "country": "IE", "city": "Dublin", "domains": ["dcu.ie"], "websiteUrl": "https://www.dcu.ie", "priority": "tier_2", "enteredAt": "2026-09-12" },
+    { "id": "reg-ie-galway", "displayName": "University of Galway", "country": "IE", "city": "Galway", "domains": ["universityofgalway.ie"], "websiteUrl": "https://www.universityofgalway.ie", "priority": "tier_2", "enteredAt": "2026-09-12" },
+
+    { "id": "reg-nl-twente", "displayName": "University of Twente", "country": "NL", "city": "Enschede", "domains": ["utwente.nl"], "websiteUrl": "https://www.utwente.nl", "priority": "tier_1", "enteredAt": "2026-09-12" },
+    { "id": "reg-nl-maastricht", "displayName": "Maastricht University", "country": "NL", "city": "Maastricht", "domains": ["maastrichtuniversity.nl"], "websiteUrl": "https://www.maastrichtuniversity.nl", "priority": "tier_1", "enteredAt": "2026-09-12" },
+    { "id": "reg-nl-tilburg", "displayName": "Tilburg University", "country": "NL", "city": "Tilburg", "domains": ["tilburguniversity.edu"], "websiteUrl": "https://www.tilburguniversity.edu", "priority": "tier_2", "enteredAt": "2026-09-12" },
+
+    { "id": "reg-de-tuberlin", "displayName": "Technische Universität Berlin", "country": "DE", "city": "Berlin", "domains": ["tu.berlin"], "websiteUrl": "https://www.tu.berlin", "priority": "tier_2", "enteredAt": "2026-09-12" },
+    { "id": "reg-de-rwth", "displayName": "RWTH Aachen University", "country": "DE", "city": "Aachen", "domains": ["rwth-aachen.de"], "websiteUrl": "https://www.rwth-aachen.de", "priority": "tier_2", "enteredAt": "2026-09-12" },
+    { "id": "reg-de-hamburg", "displayName": "Universität Hamburg", "country": "DE", "city": "Hamburg", "domains": ["uni-hamburg.de"], "websiteUrl": "https://www.uni-hamburg.de", "priority": "tier_3", "enteredAt": "2026-09-12" },
+
+    { "id": "reg-ca-dalhousie", "displayName": "Dalhousie University", "country": "CA", "city": "Halifax", "domains": ["dal.ca"], "websiteUrl": "https://www.dal.ca", "priority": "tier_1", "enteredAt": "2026-09-12" },
+    { "id": "reg-ca-manitoba", "displayName": "University of Manitoba", "country": "CA", "city": "Winnipeg", "domains": ["umanitoba.ca"], "websiteUrl": "https://umanitoba.ca", "priority": "tier_2", "enteredAt": "2026-09-12" },
+    { "id": "reg-ca-concordia", "displayName": "Concordia University", "country": "CA", "city": "Montréal", "domains": ["concordia.ca"], "websiteUrl": "https://www.concordia.ca", "priority": "tier_2", "enteredAt": "2026-09-12" },
+
+    { "id": "reg-au-adelaide", "displayName": "University of Adelaide", "country": "AU", "city": "Adelaide", "domains": ["adelaide.edu.au"], "websiteUrl": "https://www.adelaide.edu.au", "priority": "tier_2", "enteredAt": "2026-09-12" },
+    { "id": "reg-au-curtin", "displayName": "Curtin University", "country": "AU", "city": "Perth", "domains": ["curtin.edu.au"], "websiteUrl": "https://www.curtin.edu.au", "priority": "tier_2", "enteredAt": "2026-09-12" },
+    { "id": "reg-au-macquarie", "displayName": "Macquarie University", "country": "AU", "city": "Sydney", "domains": ["mq.edu.au"], "websiteUrl": "https://www.mq.edu.au", "priority": "tier_3", "enteredAt": "2026-09-12" },
+
+    { "id": "reg-lv-lu", "displayName": "University of Latvia", "country": "LV", "city": "Riga", "domains": ["lu.lv"], "websiteUrl": "https://www.lu.lv", "priority": "tier_1", "enteredAt": "2026-09-12" },
+    { "id": "reg-lv-rtu", "displayName": "Riga Technical University", "country": "LV", "city": "Riga", "domains": ["rtu.lv"], "websiteUrl": "https://www.rtu.lv", "priority": "tier_1", "enteredAt": "2026-09-12" }
+  ]
+}
