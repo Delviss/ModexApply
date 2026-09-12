@@ -49,10 +49,54 @@ page.on('requestfailed', (request) => {
   if (request.url().startsWith(BASE)) failedRequests.push(request.url());
 });
 
-/** Each box is re-resolved: a change re-renders the list it lives in. */
+/**
+ * Clicks a wizard control that replaces the page it lives on, then asserts the
+ * wizard actually moved on.
+ *
+ * Two traps here, both of which produced a green run that proved nothing.
+ *
+ * **The button is detached the instant it works**, because every state change
+ * re-renders the whole view. Playwright reads that as a failed action and
+ * retries against a page that has already moved on, where the same locator can
+ * resolve to the next step's disabled control. So the click error is swallowed
+ * and the step assertion below is what actually decides the result.
+ *
+ * **The step name is on the page whatever step you are on** — the stepper lists
+ * all five. Waiting for the text "Readiness" therefore passed while still on
+ * step 1, and the checkbox loop that followed found nothing to tick and said so
+ * to nobody. The wait is on the *current* step marker for that reason.
+ */
+async function advance(label, expectedStep) {
+  await page.locator(`button:has-text("${label}")`).first().waitFor({ state: 'visible' });
+  await page.waitForFunction((text) => {
+    const control = [...document.querySelectorAll('button')]
+      .find((one) => one.textContent.trim().startsWith(text));
+    return control !== undefined && !control.disabled;
+  }, label, { timeout: 8000 });
+  await page.locator(`button:has-text("${label}")`).first().click({ timeout: 8000 }).catch(() => {});
+  await page.locator('.steps li[aria-current="step"]', { hasText: expectedStep })
+    .waitFor({ timeout: 8000 });
+}
+
+/**
+ * Ticks every box in a list that rebuilds itself on each tick.
+ *
+ * `locator.check()` is wrong here: it clicks, finds the node it clicked has
+ * been replaced, and retries — on a fresh node that is already checked, which
+ * unticks it. So this clicks once and then waits for the box at that position
+ * to actually read as checked, which is the state the wizard goes on to use.
+ */
 async function checkEvery(selector) {
   const count = await page.locator(selector).count();
-  for (let index = 0; index < count; index += 1) await page.locator(selector).nth(index).check();
+  for (let index = 0; index < count; index += 1) {
+    if (await page.locator(selector).nth(index).isChecked()) continue;
+    await page.locator(selector).nth(index).click({ timeout: 8000 }).catch(() => {});
+    await page.waitForFunction(
+      ({ query, position }) => document.querySelectorAll(query)[position]?.checked === true,
+      { query: selector, position: index },
+      { timeout: 8000 },
+    );
+  }
 }
 
 async function go(hash, expected) {
@@ -131,22 +175,21 @@ check('a suspended guide leaves the directory',
 console.log('the application journey');
 await page.goto(`${BASE}/#/apply/example-msc-computer-science?step=1`, { waitUntil: 'load' });
 await page.waitForSelector('input[name="intake"]');
-await page.click('input[name="intake"]');
-await page.click('text=Continue');
-await page.waitForSelector('text=Readiness');
+await page.locator('input[name="intake"]').first().check();
+await advance('Continue to readiness', 'Readiness');
+await page.waitForSelector('text=Documents to include');
 await checkEvery('.check input[type="checkbox"]');
-await page.click('text=Continue');
-await page.waitForSelector('text=Consents');
+await advance('Continue to consents', 'Consents');
+await page.waitForSelector('text=Send this application to the university');
 await checkEvery('.check input[type="checkbox"]');
-await page.click('text=Continue');
+await advance('Continue to review', 'Review');
 await page.waitForSelector('pre');
 const canonical = await page.textContent('pre');
 check('the review shows the canonical payload', canonical.includes('"programKey"'));
-await page.click('text=Continue to submit');
-await page.waitForSelector('text=Send to the university');
-await page.click('text=Send to the university');
+await advance('Continue to submit', 'Submit');
+await page.locator('button:has-text("Send to the university")').click();
 await page.waitForSelector('dialog');
-await page.click('dialog >> text=Send it');
+await page.locator('dialog button:has-text("Send it")').click();
 await page.waitForSelector('text=Submission receipt', { timeout: 15000 });
 const receipt = await page.textContent('#main');
 check('the receipt carries the university’s own reference', /EX-2026-\d{6}/.test(receipt));

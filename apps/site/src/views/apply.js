@@ -110,6 +110,7 @@ function intakeStep(programme, draft, goto) {
       programme.intakes.map((intake) => h('label', { class: 'check' },
         h('input', {
           type: 'radio', name: 'intake', checked: draft.intakeId === intake.id,
+          dataset: { focusKey: `intake-${intake.id}` },
           onChange: () => patch(draft.id, { intakeId: intake.id }),
         }),
         h('span', {},
@@ -119,7 +120,7 @@ function intakeStep(programme, draft, goto) {
           h('span', { class: 'small muted', style: 'display:block' },
             intake.capacity === null ? 'Capacity not published.' : `Capacity ${intake.capacity}.`))))),
     h('div', { class: 'row', style: 'margin-top:16px' },
-      button('Continue', () => goto(2), 'primary', { disabled: draft.intakeId === null })));
+      button('Continue to readiness', () => goto(2), 'primary', { disabled: draft.intakeId === null })));
 }
 
 function readinessStep(programme, draft, goto) {
@@ -147,6 +148,7 @@ function readinessStep(programme, draft, goto) {
       usable.map((document) => h('label', { class: 'check' },
         h('input', {
           type: 'checkbox',
+          dataset: { focusKey: `document-${document.id}` },
           checked: draft.documentIds.includes(document.id),
           onChange: (event) => patch(draft.id, {
             documentIds: event.target.checked
@@ -164,7 +166,7 @@ function readinessStep(programme, draft, goto) {
       : null,
     h('div', { class: 'row', style: 'margin-top:16px' },
       button('Back', () => goto(1), 'ghost'),
-      button('Continue', () => goto(3), 'primary', { disabled: draft.documentIds.length === 0 })));
+      button('Continue to consents', () => goto(3), 'primary', { disabled: draft.documentIds.length === 0 })));
 }
 
 function consentStep(programme, draft, goto) {
@@ -181,6 +183,7 @@ function consentStep(programme, draft, goto) {
       h('label', { class: 'check' },
         h('input', {
           type: 'checkbox',
+          dataset: { focusKey: `consent-${consent.id}` },
           checked: draft.consents.includes(consent.id),
           onChange: (event) => patch(draft.id, {
             consents: event.target.checked
@@ -194,7 +197,7 @@ function consentStep(programme, draft, goto) {
       `Consent wording version ${SUBMISSION_CONSENT_NOTICE_VERSION}, recorded in the snapshot with the exact text above.`),
     h('div', { class: 'row', style: 'margin-top:16px' },
       button('Back', () => goto(2), 'ghost'),
-      button('Continue', () => goto(4), 'primary', {
+      button('Continue to review', () => goto(4), 'primary', {
         disabled: draft.consents.length !== SUBMISSION_CONSENTS.length,
       })));
 }
