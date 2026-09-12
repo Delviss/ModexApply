@@ -48,6 +48,15 @@
   --mx-action-fg: var(--mx-surface);
   --mx-action-subtle: var(--mx-brand-50);
   --mx-action-subtle-fg: var(--mx-brand-700);
+  /*
+   * The one crimson *ground* on the platform: the closing band of the public
+   * landing page. It is a role rather than a raw brand step because the two
+   * themes need opposite ends of the scale to read as the same band — deep
+   * crimson under white on light, near-black crimson under warm white on
+   * dark, where brand-600 as a full-bleed fill is a searing pink slab.
+   */
+  --mx-brand-band: var(--mx-brand-600);
+  --mx-brand-band-fg: var(--mx-surface);
   --mx-link: var(--mx-brand-600);
   --mx-text: var(--mx-ink-900);
   --mx-text-muted: var(--mx-ink-600);
@@ -155,6 +164,9 @@
     --mx-action-fg: #14100F;
     --mx-action-subtle: #300A11;
     --mx-action-subtle-fg: #EA9BAB;
+    /* The band goes down the scale on dark for the same reason actions go up. */
+    --mx-brand-band: #300A11;
+    --mx-brand-band-fg: #F2EBEC;
     --mx-link: #EA9BAB;
     --mx-focus-color: #DC6980;
   
@@ -203,6 +215,9 @@
   --mx-action-fg: #14100F;
   --mx-action-subtle: #300A11;
   --mx-action-subtle-fg: #EA9BAB;
+  /* The band goes down the scale on dark for the same reason actions go up. */
+  --mx-brand-band: #300A11;
+  --mx-brand-band-fg: #F2EBEC;
   --mx-link: #EA9BAB;
   --mx-focus-color: #DC6980;
 

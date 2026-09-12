@@ -87,6 +87,15 @@ push('  --mx-action-hover: var(--mx-brand-700);');
 push('  --mx-action-fg: var(--mx-surface);');
 push('  --mx-action-subtle: var(--mx-brand-50);');
 push('  --mx-action-subtle-fg: var(--mx-brand-700);');
+push('  /*');
+push('   * The one crimson *ground* on the platform: the closing band of the public');
+push('   * landing page. It is a role rather than a raw brand step because the two');
+push('   * themes need opposite ends of the scale to read as the same band — deep');
+push('   * crimson under white on light, near-black crimson under warm white on');
+push('   * dark, where brand-600 as a full-bleed fill is a searing pink slab.');
+push('   */');
+push('  --mx-brand-band: var(--mx-brand-600);');
+push('  --mx-brand-band-fg: var(--mx-surface);');
 push('  --mx-link: var(--mx-brand-600);');
 push('  --mx-text: var(--mx-ink-900);');
 push('  --mx-text-muted: var(--mx-ink-600);');
@@ -158,6 +167,9 @@ const darkBlock = [
   `  --mx-action-fg: ${dark.ground};`,
   `  --mx-action-subtle: ${dark.brandGround};`,
   `  --mx-action-subtle-fg: ${dark.brandLink};`,
+  '  /* The band goes down the scale on dark for the same reason actions go up. */',
+  `  --mx-brand-band: ${dark.brandGround};`,
+  `  --mx-brand-band-fg: ${dark.ink900};`,
   `  --mx-link: ${dark.brandLink};`,
   `  --mx-focus-color: ${dark.brandAction};`,
   '',
