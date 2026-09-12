@@ -75,6 +75,24 @@ export const PERMISSIONS = [
   'offer:verify',
   'audit:read',
   'user:impersonate',
+
+  // Phase 6 — the admin consoles (#8). Each of these is an action that exists
+  // only inside a console, and each is separated from the permission next to it
+  // for a reason: reading a trust case is not reading the evidence behind it,
+  // starting a payout is not approving one, and running a connector is not
+  // rewriting the notification a student receives when it fails.
+  'analytics:read',
+  'requirement:review',
+  'org_user:manage',
+  'evidence:read',
+  'sanction:write',
+  'connector:read',
+  'connector:manage',
+  'notification:write',
+  'transaction:read',
+  'payout:initiate',
+  'payout:approve',
+  'refund:write',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -139,6 +157,9 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
      * is the whole reason an unverifiable discount cannot reach a student.
      */
     'offer:write',
+    'analytics:read',
+    /** Operational review of a machine rule. Not a contract change, not a user change. */
+    'requirement:review',
   ],
   university_admin: [
     'institution:read',
@@ -155,6 +176,10 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'application:read',
     'offer:read',
     'offer:write',
+    'analytics:read',
+    'requirement:review',
+    /** The one grant that separates an admin from staff: who else gets an account. */
+    'org_user:manage',
   ],
   trust_agent: [
     'institution:read',
@@ -178,6 +203,13 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'offer:read',
     'offer:verify',
     'audit:read',
+    /**
+     * Reading the *evidence* is a separate grant from reading the case, and
+     * exercising it is itself an audited action (Phase 6 §2). A queue you can
+     * triage without opening anybody's passport scan is the normal day.
+     */
+    'evidence:read',
+    'sanction:write',
   ],
   ops: [
     'institution:read',
@@ -204,6 +236,16 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'offer:read',
     'offer:write',
     'audit:read',
+    'analytics:read',
+    'connector:read',
+    'connector:manage',
+    'notification:write',
+    /**
+     * Impersonation is ops-only, time-boxed, consented and visible to the
+     * student. Trust does not hold it: an investigator who can *become* the
+     * person they are investigating has contaminated their own evidence.
+     */
+    'user:impersonate',
   ],
   /**
    * Finance approves and pays rewards. It cannot read a message, cannot see a
@@ -218,6 +260,16 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = O
     'reward:read',
     'reward:approve',
     'audit:read',
+    'transaction:read',
+    /**
+     * Both halves of a payout, deliberately. The rule that stops one person
+     * paying themselves is not a missing permission — a finance team of one
+     * would then be unable to pay anybody — it is `checkDualApproval`, which
+     * compares actor identities server-side.
+     */
+    'payout:initiate',
+    'payout:approve',
+    'refund:write',
   ],
   superadmin: PERMISSIONS,
 });
@@ -240,6 +292,14 @@ export const CONSENT_SCOPES = [
   'document_share',
   'university_submission',
   'marketing_contact',
+  /**
+   * Phase 6. Lets a Modex support operator see the account as the student sees
+   * it, for a bounded window. Its own scope rather than a flavour of any other:
+   * agreeing that a guide may read your profile is not agreeing that a member
+   * of staff may sit inside your account, and a support visit nobody agreed to
+   * is the thing this scope exists to make impossible.
+   */
+  'support_access',
 ] as const;
 
 export type ConsentScope = (typeof CONSENT_SCOPES)[number];
@@ -265,6 +325,22 @@ export function isConsentActive(grant: ConsentGrant, now: Date = new Date()): bo
 /** The evaluated authorization context attached to every request. */
 export interface AccessContext {
   userId: string;
+  /**
+   * The session this request arrived on.
+   *
+   * Carried because step-up elevation is a property of the *session*, not of
+   * the user: an operator with two browsers open has stepped up in one of them,
+   * and a user-level flag would silently elevate the other.
+   */
+  sessionId: string;
+  /** When this session last cleared a step-up challenge. Null means never. */
+  stepUpAt: string | null;
+  /**
+   * Set when this session is an ops impersonation of the named subject. Null in
+   * the ordinary case. Nothing reads it to *grant* anything — it exists so that
+   * every audit event written under an impersonation says so.
+   */
+  impersonatedBy: string | null;
   roles: Role[];
   /** Institution the actor belongs to, if any. Students and ops have none. */
   organisationId: string | null;

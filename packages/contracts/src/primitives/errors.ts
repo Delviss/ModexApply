@@ -11,6 +11,13 @@ export const ERROR_CODES = [
   'unauthenticated',
   'token_expired',
   'mfa_required',
+  /**
+   * Phase 6. Distinct from `mfa_required`: the session *is* authenticated and
+   * the role *has* cleared MFA, but the elevated window has expired. The client
+   * shows a step-up interstitial and retries; treating it as `mfa_required`
+   * would sign the operator out mid-queue instead.
+   */
+  'step_up_required',
   'forbidden',
   'organisation_boundary',
   'consent_missing',
@@ -57,6 +64,7 @@ export const ERROR_STATUS: Readonly<Record<ErrorCode, number>> = Object.freeze({
   unauthenticated: 401,
   token_expired: 401,
   mfa_required: 401,
+  step_up_required: 401,
   forbidden: 403,
   organisation_boundary: 403,
   consent_missing: 403,

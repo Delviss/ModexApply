@@ -224,6 +224,34 @@ export class DocumentsService {
    */
   async signDownload(access: AccessContext, versionId: string) {
     const version = await this.ownedVersion(access, versionId);
+
+    /**
+     * **Fail closed on the download path too.**
+     *
+     * The connector path already refused anything unscanned — but this one did
+     * not, which meant the platform would hand out a signed URL to a file its
+     * own scanner had quarantined. Two things are wrong with that: it
+     * redistributes the malware, and it tells the student, by handing over the
+     * file as normal, that nothing is wrong with it.
+     *
+     * `pending` and `failed` are refused for the same reason and not the same
+     * one: those bytes have not been cleared, and a scanner that could not
+     * decide is not a scanner that said yes.
+     */
+    if (version.scanState !== 'clean') {
+      await this.audit.record({
+        actor: toAuditActor(access),
+        action: 'document.download_url_issued',
+        objectType: 'document',
+        objectId: version.documentId,
+        metadata: { refused: true, reason: version.scanState, versionId },
+      });
+      throw new AppError(
+        'precondition_failed',
+        DOWNLOAD_REFUSAL[version.scanState] ?? UNSCANNED_REFUSAL,
+      );
+    }
+
     const signed = this.storage.signUrl('GET', version.objectKey);
 
     await this.audit.record({
@@ -346,6 +374,19 @@ export class DocumentsService {
     return version;
   }
 }
+
+/** The catch-all, for a scan state this table has not been taught about yet. */
+const UNSCANNED_REFUSAL =
+  'This file has not been cleared by our malware scan, so it cannot be downloaded yet.';
+
+/** Why a download was refused, in words the student can act on. */
+const DOWNLOAD_REFUSAL: Readonly<Record<string, string>> = Object.freeze({
+  pending: 'This file is still being checked for malware. Try again in a moment.',
+  quarantined:
+    'This file did not pass our malware scan, so it cannot be downloaded or shared. Upload a replacement.',
+  failed:
+    'We could not finish checking this file, so we will not hand it back out. Upload it again.',
+});
 
 type VersionRow = {
   id: string;

@@ -38,6 +38,7 @@ async function student(email = 'ada@example.com'): Promise<AccessContext> {
     data: { email, displayName: 'Ada Bello', status: 'active' },
   });
   return buildAccessContext({
+    sessionId: 'session_test',
     userId: user.id,
     roles: ['student'],
     organisationId: null,

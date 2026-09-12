@@ -1,0 +1,151 @@
+# Alerts (Phase 7 §5, TRD §22).
+#
+# **An alert with no runbook does not ship.** `pnpm check:runbooks` enforces
+# that literally: every entry here must name an owner and point at a runbook
+# file that exists, and CI fails if one does not.
+#
+# The metric names are the ones recorded in
+# `apps/api/src/common/observability/telemetry.ts`. A rename there without a
+# rename here produces an alert that can never fire, which is worse than no
+# alert at all — so the check also refuses an alert whose metric is not
+# recorded anywhere in the API.
+#
+# Severities:
+#   sev1  Students or partners cannot do the thing the platform is for. Page.
+#   sev2  A path is degraded or a safety control is not running. Page in hours.
+#   sev3  Something needs a human today, not now. Ticket.
+
+alerts:
+  - name: submission_failures
+    severity: sev1
+    owner: platform-oncall
+    runbook: docs/runbooks/submission-failures.md
+    metric: application.submissions
+    condition: >-
+      rate(application.submissions{outcome="failed"}[15m]) > 0.1 * rate(application.submissions[15m])
+      and rate(application.submissions[15m]) > 0
+    summary: More than one submission in ten is failing.
+    why: >-
+      A failed submission is a student who believes they have applied and has
+      not. Every minute this runs is a deadline getting closer.
+
+  - name: connector_dead_letters
+    severity: sev1
+    owner: platform-oncall
+    runbook: docs/runbooks/connector-down.md
+    metric: connector.calls
+    condition: 'increase(connector.calls{outcome="error"}[10m]) > 5'
+    summary: A partner connector is returning errors repeatedly.
+    why: >-
+      Retries are automatic up to the dead-letter threshold; past it, somebody
+      has to talk to the partner.
+
+  - name: submission_stuck_pending
+    severity: sev2
+    owner: platform-oncall
+    runbook: docs/runbooks/application-stuck.md
+    metric: application.submissions
+    condition: 'application.submissions{outcome="pending"} > 0 for 60m'
+    summary: Applications have been awaiting a university reference for an hour.
+    why: >-
+      `submitted_pending` is a real state, not an error — but an hour of it
+      means the partner never confirmed receipt.
+
+  - name: document_scan_failures
+    severity: sev2
+    owner: platform-oncall
+    runbook: docs/runbooks/scanner-degraded.md
+    metric: document.scans
+    condition: 'increase(document.scans{outcome="failed"}[15m]) > 3'
+    summary: The malware scanner is failing to reach a verdict.
+    why: >-
+      The vault fails closed, so every affected document is unusable until this
+      clears. Students see uploads that never become usable.
+
+  - name: report_spike
+    severity: sev2
+    owner: trust-oncall
+    runbook: docs/runbooks/report-spike.md
+    metric: trust.reports
+    condition: 'increase(trust.reports[1h]) > 3 * avg_over_time(increase(trust.reports[1h])[7d])'
+    summary: Reports are arriving far faster than normal.
+    why: >-
+      Either something is being coordinated against the platform, or a rule
+      change has started catching legitimate behaviour. Both need a human now.
+
+  - name: authentication_anomalies
+    severity: sev2
+    owner: security-oncall
+    runbook: docs/runbooks/auth-anomalies.md
+    metric: auth.anomalies
+    condition: >-
+      increase(auth.anomalies{kind="token_reuse"}[5m]) > 0
+      or increase(auth.anomalies{kind="login_failed"}[10m]) > 100
+    summary: Token reuse, or a burst of failed sign-ins.
+    why: >-
+      Refresh-token reuse means a token was stolen or replayed; the family is
+      revoked automatically, and somebody still needs to find out which.
+
+  - name: moderation_queue_backlog
+    severity: sev3
+    owner: trust-oncall
+    runbook: docs/runbooks/moderation-backlog.md
+    metric: moderation.queue.depth
+    condition: 'moderation.queue.depth > 50 for 4h'
+    summary: The trust queue is deeper than the team can clear.
+    why: >-
+      Every item is a person waiting — a guide unable to start, an offer a
+      student cannot see, a report nobody has read.
+
+  - name: search_index_lag
+    severity: sev3
+    owner: platform-oncall
+    runbook: docs/runbooks/search-stale.md
+    metric: search.index.lag
+    condition: 'histogram_quantile(0.95, search.index.lag) > 300'
+    summary: The search index is more than five minutes behind the catalogue.
+    why: >-
+      A student searching sees a programme that has changed, or misses one that
+      just opened.
+
+  - name: catalogue_staleness
+    severity: sev3
+    owner: platform-oncall
+    runbook: docs/runbooks/catalogue-stale.md
+    metric: catalogue.records.stale
+    condition: 'increase(catalogue.records.stale[1h]) > 20'
+    summary: A partner's catalogue is going stale in bulk.
+    why: >-
+      Stale records hide themselves from search rather than show a wrong price,
+      so the visible symptom is a partner quietly disappearing.
+
+  - name: rate_limit_refusals
+    severity: sev3
+    owner: security-oncall
+    runbook: docs/runbooks/rate-limit-refusals.md
+    metric: ratelimit.refusals
+    condition: 'increase(ratelimit.refusals[15m]) > 500'
+    summary: A lot of traffic is being refused by a budget.
+    why: >-
+      Either an attack, or a budget set too low and a real person locked out of
+      their own account. The runbook says how to tell.
+
+  - name: api_error_rate
+    severity: sev1
+    owner: platform-oncall
+    runbook: docs/runbooks/api-errors.md
+    metric: http.server.errors
+    condition: 'rate(http.server.errors[5m]) > 0.02 * rate(http.server.responses[5m])'
+    summary: More than two percent of requests are failing with a server error.
+    why: The platform is not working, whatever the individual symptom is.
+
+  - name: api_latency
+    severity: sev2
+    owner: platform-oncall
+    runbook: docs/runbooks/api-latency.md
+    metric: http.server.duration
+    condition: 'histogram_quantile(0.95, http.server.duration) > 1000'
+    summary: p95 request latency is over a second.
+    why: >-
+      The search budget is 500 ms (#4). A second at p95 means the catalogue is
+      unusable on a phone on a slow connection, which is most of the market.

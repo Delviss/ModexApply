@@ -36,6 +36,14 @@ import { InboundStatusService } from '../../src/connectors/inbound-status.servic
 import { StatusPollService } from '../../src/connectors/status-poll.service.js';
 import type { ConnectorPort, SecretResolver } from '../../src/connectors/connector.port.js';
 import { FeatureFlagService } from '../../src/config/feature-flags.js';
+import { UniversityPortalService } from '../../src/admin/university-portal.service.js';
+import { TrustConsoleService } from '../../src/admin/trust-console.service.js';
+import { OpsConsoleService } from '../../src/admin/ops-console.service.js';
+import { FinanceConsoleService } from '../../src/admin/finance-console.service.js';
+import { SanctionsService } from '../../src/admin/sanctions.service.js';
+import { ImpersonationService } from '../../src/admin/impersonation.service.js';
+import { PrivacyService } from '../../src/privacy/privacy.service.js';
+import { TokenService } from '../../src/auth/token.service.js';
 import type { AccessContext, ConnectorType, Role, SubmissionOutcome } from '@modex/contracts';
 
 /**
@@ -146,6 +154,14 @@ export interface Harness {
   offerExpiry: OfferExpiryService;
   offerIntegrity: OfferIntegrityService;
   offerLifecycle: OfferLifecycleService;
+  // Phase 6 — the four consoles.
+  portal: UniversityPortalService;
+  trustConsole: TrustConsoleService;
+  opsConsole: OpsConsoleService;
+  finance: FinanceConsoleService;
+  sanctions: SanctionsService;
+  impersonation: ImpersonationService;
+  privacy: PrivacyService;
 }
 
 /**
@@ -220,6 +236,10 @@ export class FakeStorage extends StorageService {
 
   override async fetchObject(key: string): Promise<Buffer | null> {
     return this.objects.get(key) ?? null;
+  }
+
+  override async deleteObject(key: string): Promise<void> {
+    this.objects.delete(key);
   }
 }
 
@@ -370,14 +390,29 @@ export function createHarness(prisma: PrismaClient): Harness {
       guides,
       queue as unknown as QueueService,
     ),
+    portal: new UniversityPortalService(prismaService, audit, applicationState),
+    trustConsole: new TrustConsoleService(prismaService, audit),
+    opsConsole: new OpsConsoleService(prismaService, audit),
+    finance: new FinanceConsoleService(prismaService, audit),
+    sanctions: new SanctionsService(prismaService, audit, guides),
+    privacy: new PrivacyService(prismaService, audit, storage),
+    impersonation: new ImpersonationService(
+      prismaService,
+      audit,
+      // A real signer with a test key: the impersonation token is verified in
+      // these tests, so a stub that returns a fixed string would prove nothing.
+      new TokenService('test-signing-key-at-least-32-characters-long', 900, 86_400),
+    ),
   };
 }
 
 /**
  * Clears state between tests.
  *
- * `audit_events` and `message_flags` are deliberately absent: neither can be
- * truncated, which is the property under test. Tests therefore assert on the
+ * `audit_events`, `message_flags`, `requirement_reviews` and
+ * `impersonation_grants` are deliberately absent: none can be truncated, which
+ * is the property under test. Tests that touch them assert on the rows they
+ * caused rather than on an empty table, and use a fresh subject each time. Tests therefore assert on the
  * rows they caused rather than on the table being empty. `message_flags` holds
  * no foreign key to `messages`, so truncating messages does not drag it in —
  * which is the same design decision, seen from the other side.
@@ -387,6 +422,9 @@ export async function resetDatabase(prisma: PrismaClient): Promise<void> {
     TRUNCATE TABLE
       admission_offers, application_offers,
       offer_source_checks, offer_exclusions, offers,
+      payouts, refunds, modex_transactions,
+      notification_deliveries, notification_templates,
+      sanctions,
       submission_attempts, application_status_events, application_tasks,
       applications, connector_configs,
       guide_answers, guide_questions, guide_reward_entries, guide_sessions,
@@ -409,7 +447,19 @@ export async function resetDatabase(prisma: PrismaClient): Promise<void> {
 }
 
 export function actor(roles: Role[], organisationId: string | null = null, userId = 'user_test'): AccessContext {
-  return buildAccessContext({ userId, roles, organisationId, mfaSatisfied: true, consents: [] });
+  return buildAccessContext({
+    userId,
+    sessionId: `session_${userId}`,
+    // Staff actors in tests are treated as freshly stepped-up. The step-up
+    // *guard* is exercised on its own in `test/step-up.test.ts`; forcing every
+    // console test to re-stamp a session would test the harness rather than the
+    // rule.
+    stepUpAt: new Date(),
+    roles,
+    organisationId,
+    mfaSatisfied: true,
+    consents: [],
+  });
 }
 
 /** A signed-in student, with the consents a Phase 3 flow needs. */
@@ -419,6 +469,7 @@ export function studentActor(
 ): AccessContext {
   return buildAccessContext({
     userId,
+    sessionId: `session_${userId}`,
     roles: ['student'],
     organisationId: null,
     mfaSatisfied: false,
@@ -447,6 +498,12 @@ export const trustAgent = (userId = 'user_trust') => actor(['trust_agent'], null
 
 /** Modex operations: can write catalogue anywhere, cannot verify. */
 export const opsUser = (userId = 'user_ops') => actor(['ops'], null, userId);
+
+/** Phase 6. Finance holds both halves of a payout; identity is what separates them. */
+export const financeUser = (userId = 'user_finance') => actor(['finance'], null, userId);
+
+export const universityStaff = (organisationId: string, userId = 'user_uni_staff') =>
+  actor(['university_staff'], organisationId, userId);
 
 export const universityAdmin = (organisationId: string, userId = 'user_uni') =>
   actor(['university_admin'], organisationId, userId);

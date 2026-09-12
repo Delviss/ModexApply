@@ -25,6 +25,17 @@ export {
 
 // Blocks — 21st.dev archetypes, re-themed. See registry.ts for provenance.
 export { AppShell, type AppShellProps, type NavGroup, type NavItem } from './blocks/app-shell.js';
+// Phase 6 — the admin consoles. All three are deliberately un-dismissible or
+// un-shortcuttable; see each component for why.
+export {
+  ImpersonationBanner,
+  type ImpersonationBannerProps,
+} from './signature/impersonation-banner.js';
+export {
+  StepUpInterstitial,
+  type StepUpInterstitialProps,
+} from './signature/step-up-interstitial.js';
+export { DangerConfirm, type DangerConfirmProps } from './signature/danger-confirm.js';
 export { CommandPalette, type CommandPaletteProps, type PaletteAction } from './blocks/command-palette.js';
 export { DataTable, type BulkAction, type Column, type DataTableProps } from './blocks/data-table.js';
 export { Pagination, type PaginationProps } from './blocks/pagination.js';

@@ -50,6 +50,7 @@ async function student(email = 'ada@example.com'): Promise<AccessContext> {
     data: { email, displayName: 'Ada Bello', status: 'active' },
   });
   return buildAccessContext({
+    sessionId: 'session_test',
     userId: user.id,
     roles: ['student'],
     organisationId: null,
@@ -984,6 +985,7 @@ describe('operator-assisted submission', () => {
       data: { email: 'sam@modex.example', displayName: 'Sam Okafor', status: 'active' },
     });
     const opsAccess = buildAccessContext({
+      sessionId: 'session_test',
       userId: operator.id,
       roles: ['ops'],
       organisationId: null,
@@ -1023,6 +1025,7 @@ describe('operator-assisted submission', () => {
       data: { email: 'ops@modex.example', displayName: 'Ops', status: 'active' },
     });
     const opsAccess = buildAccessContext({
+      sessionId: 'session_test',
       userId: operator.id,
       roles: ['ops'],
       organisationId: null,

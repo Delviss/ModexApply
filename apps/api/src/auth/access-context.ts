@@ -15,6 +15,9 @@ import { AppError } from '../common/errors/app-error.js';
  */
 export interface AccessContextInput {
   userId: string;
+  sessionId: string;
+  stepUpAt?: Date | string | null;
+  impersonatedBy?: string | null;
   roles: Role[];
   organisationId: string | null;
   mfaSatisfied: boolean;
@@ -24,6 +27,14 @@ export interface AccessContextInput {
 export function buildAccessContext(input: AccessContextInput): AccessContext {
   return {
     userId: input.userId,
+    sessionId: input.sessionId,
+    stepUpAt:
+      input.stepUpAt == null
+        ? null
+        : typeof input.stepUpAt === 'string'
+          ? input.stepUpAt
+          : input.stepUpAt.toISOString(),
+    impersonatedBy: input.impersonatedBy ?? null,
     roles: input.roles,
     organisationId: input.organisationId,
     permissions: permissionsForRoles(input.roles),

@@ -7,6 +7,7 @@ const CAMBRIDGE = 'inst_cambridge';
 
 function staffAt(organisationId: string, mfaSatisfied = true) {
   return buildAccessContext({
+    sessionId: 'session_test',
     userId: 'user_1',
     roles: ['university_admin'],
     organisationId,
@@ -17,6 +18,7 @@ function staffAt(organisationId: string, mfaSatisfied = true) {
 
 function student() {
   return buildAccessContext({
+    sessionId: 'session_test',
     userId: 'user_student',
     roles: ['student'],
     organisationId: null,
@@ -80,6 +82,7 @@ describe('a protected resource', () => {
 describe('the organisation boundary', () => {
   it('lets Modex staff cross it, and records who they are', () => {
     const ops = buildAccessContext({
+      sessionId: 'session_test',
       userId: 'user_ops',
       roles: ['ops'],
       organisationId: null,
@@ -104,6 +107,7 @@ describe('the organisation boundary', () => {
 describe('consent', () => {
   const withConsent = (overrides: Record<string, unknown> = {}) =>
     buildAccessContext({
+      sessionId: 'session_test',
       userId: 'user_student',
       roles: ['student'],
       organisationId: null,

@@ -8,6 +8,9 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 COMPOSE ?= docker compose
 
+# The integration suite truncates, so it never touches the development database.
+TEST_DATABASE_URL ?= postgresql://modex:modex@localhost:5432/modex_test
+
 .PHONY: help
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -47,8 +50,15 @@ test: ## Unit tests across the workspace
 
 .PHONY: test-integration
 test-integration: services ## Integration tests against a real database
-	pnpm --filter @modex/api prisma:migrate
-	pnpm --filter @modex/api test:integration
+	# Pinned to `modex_test`, not inherited. The suite truncates between tests,
+	# so a sourced `.env` pointing at the development database would empty it
+	# and take the seed with it.
+	DATABASE_URL=$(TEST_DATABASE_URL) pnpm --filter @modex/api prisma:migrate
+	DATABASE_URL=$(TEST_DATABASE_URL) pnpm --filter @modex/api test:integration
+
+.PHONY: test-e2e
+test-e2e: ## Browser journeys and accessibility, against a running stack
+	pnpm --filter @modex/web test:e2e
 
 .PHONY: verify
 verify: ## Everything CI runs

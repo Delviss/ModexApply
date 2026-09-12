@@ -105,7 +105,20 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = Object.freeze([
     use: 'ui',
     note: 'Non-text only. Error copy uses --mx-danger-text.',
   },
-  { name: 'surface on danger (destructive button label)', foreground: neutral.surface, background: semantic.danger, use: 'large' },
+  /**
+   * The destructive button label.
+   *
+   * Declared against `dangerText` rather than `danger`, and as body text rather
+   * than large: the button renders a 14px label, and measuring it as "large"
+   * was how a 4.29:1 button passed this gate and failed an axe run on the page
+   * it shipped to.
+   */
+  {
+    name: 'surface on danger-text (destructive button label)',
+    foreground: neutral.surface,
+    background: semantic.dangerText,
+    use: 'body',
+  },
 
   // --- Boundaries and focus ---------------------------------------------
   { name: 'border-input on surface (control boundary)', foreground: neutral.borderInput, background: neutral.surface, use: 'ui' },

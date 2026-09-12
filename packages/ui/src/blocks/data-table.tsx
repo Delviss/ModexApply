@@ -49,6 +49,30 @@ export interface DataTableProps<Row> {
   className?: string;
 }
 
+/**
+ * Whether a column offers sorting.
+ *
+ * A column with no header — the action column at the end of most tables — is
+ * never sortable, however its `sortable` flag reads. Rendering a sort button
+ * with nothing inside it produced a control with no accessible name at all,
+ * which a screen reader announces as "button" and a keyboard user lands on for
+ * no reason.
+ */
+function sortableColumn<Row>(column: Column<Row>): boolean {
+  if (column.sortable === false) return false;
+  const header = column.header;
+  if (header === undefined || header === null) return false;
+  if (typeof header === 'string' && header.trim() === '') return false;
+  return true;
+}
+
+/** A name for the column, for the sort button's label. */
+function columnLabel<Row>(column: Column<Row>): string {
+  return typeof column.header === 'string' && column.header.trim() !== ''
+    ? column.header
+    : column.id;
+}
+
 export function DataTable<Row>({
   rows,
   columns,
@@ -223,12 +247,17 @@ export function DataTable<Row>({
                     scope="col"
                     aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
                   >
-                    {column.sortable === false ? (
+                    {!sortableColumn(column) ? (
                       column.header
                     ) : (
                       <button
                         type="button"
                         className="mx-table__sort-button"
+                        // The header is often an element rather than a string,
+                        // and an action column has no header at all — so the
+                        // accessible name is built rather than inherited from
+                        // whatever happens to be inside the button.
+                        aria-label={`Sort by ${columnLabel(column)}`}
                         onClick={() =>
                           setSort((previous) =>
                             previous?.columnId === column.id

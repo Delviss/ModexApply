@@ -6,6 +6,7 @@ import { ReverificationService } from '../guides/reverification.service.js';
 import { SubmissionService } from '../applications/submission.service.js';
 import { StatusPollService } from '../connectors/status-poll.service.js';
 import { OfferExpiryService } from '../offers/offer-expiry.service.js';
+import { ImpersonationService } from '../admin/impersonation.service.js';
 
 export interface ReindexPayload {
   programKey: string;
@@ -42,6 +43,10 @@ export interface OfferExpiryPayload {
   now?: string;
 }
 
+export interface ImpersonationSweepPayload {
+  now?: string;
+}
+
 /**
  * Registers the background workers.
  *
@@ -67,6 +72,7 @@ export class WorkersService implements OnModuleInit {
     private readonly submissions: SubmissionService,
     private readonly statusPoll: StatusPollService,
     private readonly offerExpiry: OfferExpiryService,
+    private readonly impersonation: ImpersonationService,
   ) {}
 
   onModuleInit(): void {
@@ -130,9 +136,19 @@ export class WorkersService implements OnModuleInit {
       await this.offerExpiry.sweep(payload.now === undefined ? new Date() : new Date(payload.now));
     });
 
+    // Phase 6. The expiry is already enforced on every request — this sweep is
+    // what closes the grant, revokes the impersonation session and writes the
+    // end event, so the audit log has a start and an end for every visit.
+    this.queue.register<ImpersonationSweepPayload>(QUEUES.impersonationSweep, async (payload) => {
+      await this.impersonation.sweepExpired(
+        payload.now === undefined ? new Date() : new Date(payload.now),
+      );
+    });
+
     this.logger.log(
       'Registered workers for search-index, document-scan, guide-reverification, ' +
-        'partnership-cascade, connector-submission, connector-poll and offer-expiry',
+        'partnership-cascade, connector-submission, connector-poll, offer-expiry ' +
+        'and impersonation-sweep',
     );
   }
 }

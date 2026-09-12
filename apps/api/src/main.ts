@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { Logger, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import { loadEnv } from './config/env.js';
@@ -15,7 +16,21 @@ async function bootstrap(): Promise<void> {
   // against a re-serialised body would mean a partner's key ordering could
   // change the signature without changing the request — which is how webhook
   // verification quietly stops working for one partner and nobody notices.
-  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
+
+  /**
+   * How many proxies sit in front of this process.
+   *
+   * Express walks `X-Forwarded-For` from the right by exactly this many hops to
+   * find the client address. Setting `true` — "trust every hop" — is the
+   * classic rate-limit bypass: a client appends its own entries and pushes its
+   * real address out of view. A number is a claim about the deployment, and the
+   * deployment is what has to be right.
+   */
+  app.set('trust proxy', env.TRUSTED_PROXY_HOPS);
 
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
   app.enableCors({

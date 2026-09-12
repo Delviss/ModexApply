@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import { Public } from '../auth/decorators/access.decorators.js';
 import { AppError } from '../common/errors/app-error.js';
 import { InboundStatusService } from './inbound-status.service.js';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator.js';
 
 /**
  * Inbound status webhooks (Phase 4 §3).
@@ -21,6 +22,7 @@ import { InboundStatusService } from './inbound-status.service.js';
 export class ConnectorsController {
   constructor(private readonly inbound: InboundStatusService) {}
 
+  @RateLimit(['connector.webhook'])
   @Post('connectors/:connectorId/events')
   @Public()
   @HttpCode(202)

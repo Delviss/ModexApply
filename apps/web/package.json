@@ -2,13 +2,14 @@
   "name": "@modex/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Modex Apply web \u2014 public institution and programme pages, catalogue admin, partner onboarding.",
+  "description": "Modex Apply web — public institution and programme pages, catalogue admin, partner onboarding.",
   "scripts": {
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
     "dev": "next dev -p 3000",
     "start": "next start -p 3000",
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:e2e": "node test/e2e-journeys.mjs",
     "test": "vitest run"
   },
   "dependencies": {
@@ -19,16 +20,18 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.11.2",
     "@modex/config": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.0.4",
     "eslint": "^9.39.0",
     "jsdom": "^26.1.0",
+    "playwright": "1.56.0",
     "typescript": "5.9.3",
-    "vitest": "^3.2.4",
-    "@vitejs/plugin-react": "^5.0.4"
+    "vitest": "^3.2.4"
   }
 }

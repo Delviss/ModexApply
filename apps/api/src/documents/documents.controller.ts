@@ -5,6 +5,7 @@ import { Actor } from '../auth/decorators/actor.decorator.js';
 import { RequirePermissions } from '../auth/decorators/access.decorators.js';
 import { ZodValidationPipe } from '../common/http/zod-validation.pipe.js';
 import { DocumentsService } from './documents.service.js';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator.js';
 
 const CreateVersionSchema = z.object({
   documentId: z.string().nullable().optional(),
@@ -37,6 +38,7 @@ export class DocumentsController {
     return { data: await this.documents.list(access) };
   }
 
+  @RateLimit(['document.upload'])
   @Post('versions')
   @RequirePermissions('document:write')
   async createVersion(
@@ -63,6 +65,7 @@ export class DocumentsController {
     return this.documents.finalise(access, versionId, body);
   }
 
+  @RateLimit(['document.download_url'])
   @Post('versions/:versionId/download-url')
   @RequirePermissions('document:read')
   async downloadUrl(@Actor() access: AccessContext, @Param('versionId') versionId: string) {

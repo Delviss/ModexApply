@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useId, useRef, useState, type DragEvent } from 'react';
 import { Button } from '../primitives/button.js';
 import { Progress } from '../primitives/feedback.js';
 import { FileIcon, TrashIcon, UploadIcon } from '../primitives/icons.js';
@@ -50,6 +50,7 @@ export function Dropzone({
   const [dragging, setDragging] = useState(false);
   const [rejection, setRejection] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hintId = useId();
 
   const accept_ = useCallback(
     (incoming: FileList | null) => {
@@ -77,13 +78,21 @@ export function Dropzone({
 
   return (
     <div className={className}>
-      {/* Keyboard reaches the same affordance as the pointer: the div is a button. */}
+      {/*
+        Keyboard reaches the same affordance as the pointer: the div is a
+        button. The file input is a *sibling* rather than a child, and that is
+        not a style choice — an interactive control nested inside a
+        `role="button"` is the `nested-interactive` violation, and assistive
+        technology cannot reliably reach the inner control at all.
+      */}
       <div
         className="mx-dropzone"
         data-dragging={dragging}
         data-invalid={rejection !== null}
         role="button"
         tabIndex={0}
+        aria-label={label}
+        aria-describedby={hint === undefined ? undefined : hintId}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -100,19 +109,33 @@ export function Dropzone({
       >
         <UploadIcon size={22} />
         <span className="mx-field__label">{label}</span>
-        {hint ? <span className="mx-dropzone__hint">{hint}</span> : null}
+        {hint ? (
+          <span className="mx-dropzone__hint" id={hintId}>
+            {hint}
+          </span>
+        ) : null}
         {maxSizeBytes !== undefined ? (
           <span className="mx-dropzone__hint">Up to {formatBytes(maxSizeBytes)} per file</span>
         ) : null}
-        <input
-          ref={inputRef}
-          type="file"
-          className="mx-visually-hidden"
-          accept={accept}
-          multiple={multiple}
-          onChange={(event) => accept_(event.target.files)}
-        />
       </div>
+
+      {/*
+        Labelled, and deliberately out of the tab order: the visible control
+        above is the one people tab to, and two stops onto the same affordance
+        is a maze rather than a convenience. It still has an accessible name,
+        because a file input with none is announced as "file upload, button" and
+        nothing else.
+      */}
+      <input
+        ref={inputRef}
+        type="file"
+        className="mx-visually-hidden"
+        aria-label={label}
+        tabIndex={-1}
+        accept={accept}
+        multiple={multiple}
+        onChange={(event) => accept_(event.target.files)}
+      />
 
       {rejection !== null ? (
         <p className="mx-field__error" role="alert">

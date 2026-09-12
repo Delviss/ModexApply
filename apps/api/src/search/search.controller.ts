@@ -3,6 +3,7 @@ import { ProgramSearchQuerySchema, type AccessContext } from '@modex/contracts';
 import { OptionalActor } from '../auth/decorators/actor.decorator.js';
 import { Public } from '../auth/decorators/access.decorators.js';
 import { SearchService } from './search.service.js';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator.js';
 
 /**
  * Catalogue search (Phase 2 §3, FR-004).
@@ -16,6 +17,7 @@ import { SearchService } from './search.service.js';
 export class SearchController {
   constructor(private readonly search: SearchService) {}
 
+  @RateLimit(['search.query'])
   @Get('programmes')
   @Public()
   async searchProgrammes(

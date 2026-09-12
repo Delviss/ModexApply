@@ -24,3 +24,6 @@ export * from './domain/qa.js';
 export * from './domain/applications.js';
 export * from './domain/connectors.js';
 export * from './domain/offers.js';
+export * from './domain/admin.js';
+export * from './domain/rate-limits.js';
+export * from './domain/privacy.js';

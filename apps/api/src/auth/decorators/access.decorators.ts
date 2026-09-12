@@ -1,9 +1,11 @@
 import { SetMetadata } from '@nestjs/common';
-import type { ConsentScope, Permission } from '@modex/contracts';
+import type { ConsentScope, Permission, StepUpAction } from '@modex/contracts';
 
 export const PERMISSIONS_KEY = 'modex:permissions';
 export const CONSENT_KEY = 'modex:consent';
 export const PUBLIC_KEY = 'modex:public';
+export const PENDING_MFA_KEY = 'modex:pending-mfa';
+export const STEP_UP_KEY = 'modex:step-up';
 
 /**
  * Marks a route as reachable without authentication.
@@ -16,6 +18,24 @@ export const Public = () => SetMetadata(PUBLIC_KEY, true);
 
 export const RequirePermissions = (...permissions: Permission[]) =>
   SetMetadata(PERMISSIONS_KEY, permissions);
+
+/**
+ * Reachable by an authenticated session that has not yet cleared MFA.
+ *
+ * Exactly one kind of route needs this: the MFA challenge itself. Without it a
+ * staff login is a closed loop — the session cannot do anything until it
+ * satisfies MFA, and it cannot satisfy MFA without doing something.
+ */
+export const AllowPendingMfa = () => SetMetadata(PENDING_MFA_KEY, true);
+
+/**
+ * Requires a fresh step-up challenge (Phase 6 §2).
+ *
+ * Separate from `@RequirePermissions` on purpose: holding `evidence:read` is a
+ * statement about the person, and stepping up is a statement about the moment.
+ * Console entry, evidence viewing and sanctions each need both.
+ */
+export const RequireStepUp = (action: StepUpAction) => SetMetadata(STEP_UP_KEY, action);
 
 export interface ConsentRequirement {
   scopes: ConsentScope[];

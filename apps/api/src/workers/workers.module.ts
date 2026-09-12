@@ -5,6 +5,7 @@ import { GuidesModule } from '../guides/guides.module.js';
 import { ApplicationsModule } from '../applications/applications.module.js';
 import { ConnectorsModule } from '../connectors/connectors.module.js';
 import { OffersModule } from '../offers/offers.module.js';
+import { AdminModule } from '../admin/admin.module.js';
 import { WorkersService } from './workers.service.js';
 
 @Module({
@@ -15,6 +16,7 @@ import { WorkersService } from './workers.service.js';
     ApplicationsModule,
     ConnectorsModule,
     OffersModule,
+    AdminModule,
   ],
   providers: [WorkersService],
   exports: [WorkersService],

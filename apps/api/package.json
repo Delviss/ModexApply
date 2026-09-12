@@ -2,7 +2,7 @@
   "name": "@modex/api",
   "version": "0.1.0",
   "private": true,
-  "description": "Modex Apply platform API \u2014 identity, audit, institutions and the programme catalogue.",
+  "description": "Modex Apply platform API — identity, audit, institutions and the programme catalogue.",
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
@@ -17,8 +17,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
-    "seed": "tsx prisma/seed.ts",
-    "reindex": "tsx prisma/reindex.ts"
+    "seed": "pnpm --filter @modex/contracts build && tsx prisma/seed.ts",
+    "reindex": "pnpm --filter @modex/contracts build && tsx prisma/reindex.ts"
   },
   "dependencies": {
     "@modex/contracts": "workspace:*",
@@ -30,6 +30,7 @@
     "@prisma/client": "^6.19.3",
     "argon2": "^0.44.0",
     "bullmq": "^5.63.0",
+    "ioredis": "5.9.1",
     "jose": "^6.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
