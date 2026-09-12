@@ -11,7 +11,6 @@
 import { PrismaClient, type Role } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { MfaService } from '../src/auth/mfa.service.js';
-import { loadEnv } from '../src/config/env.js';
 
 const prisma = new PrismaClient();
 
@@ -34,10 +33,34 @@ const DEV_PASSWORD = 'ModexDev!Passw0rd';
 /** A fixed base32 secret, so `oathtool --totp -b <secret>` produces a working code. */
 const DEV_TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 
-const mfa = new MfaService(loadEnv().MFA_SECRET_KEY);
+/**
+ * The one environment variable the seed actually needs, read directly rather
+ * than through `loadEnv()`.
+ *
+ * `loadEnv()` validates the *whole* API configuration — a signing key, a Redis
+ * URL, a scanner choice — none of which a fixture script uses. Requiring all of
+ * it meant the seed could not run anywhere the API itself was not fully
+ * configured, which is exactly where a schema smoke test wants to run: CI
+ * brings up a database and nothing else.
+ *
+ * The fallback matches `.env.example`, so a developer who seeds before copying
+ * it still gets staff accounts that work the moment they do. When the key is
+ * absent the seed says so, because a sealed secret the running API cannot open
+ * is a sign-in failure nobody would connect back to this script.
+ */
+const DEV_MFA_KEY = 'local-development-only-mfa-seal-key-change-me';
+const mfaKey = process.env.MFA_SECRET_KEY ?? DEV_MFA_KEY;
+const mfa = new MfaService(mfaKey);
 
 async function main(): Promise<void> {
   console.warn('Seeding development fixtures...');
+  if (process.env.MFA_SECRET_KEY === undefined) {
+    console.warn(
+      'MFA_SECRET_KEY is not set; sealing staff authenticators with the ' +
+        'development key. Staff sign-in only works if the API runs with the ' +
+        'same key — which `.env.example` supplies.',
+    );
+  }
 
   const passwordHash = await argon2.hash(DEV_PASSWORD);
   const sealedSecret = mfa.seal(DEV_TOTP_SECRET);

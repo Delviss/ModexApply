@@ -142,6 +142,8 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://modex:modex@localhost:5432/modex_test
+      JWT_SIGNING_KEY: ci-only-signing-key-at-least-32-characters
+      MFA_SECRET_KEY: ci-only-mfa-sealing-key-at-least-32-characters
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
