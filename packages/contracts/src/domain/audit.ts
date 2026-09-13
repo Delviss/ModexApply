@@ -49,6 +49,12 @@ export const AUDIT_ACTIONS = [
   'document.quarantined',
   'document.download_url_issued',
   'document.deleted',
+  // Phase 8 — human assessment of an uploaded document (#20). Opening a
+  // student's file is audited for the same reason `evidence.viewed` is: the
+  // harm from an unnecessary look at somebody's passport happens at the
+  // moment of looking, and nothing else is left behind to find later.
+  'document.review_opened',
+  'document.assessed',
   'profile.created',
   'profile.updated',
   'eligibility.override_applied',

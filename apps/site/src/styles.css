@@ -649,3 +649,179 @@ dialog {
 dialog::backdrop { background: var(--scrim); }
 dialog .body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* --------------------------------------------------------------------------
+ * The admin dashboard shell (Phase 8)
+ *
+ * The same design as `@modex/ui`'s `CollapsibleSidebarDashboard`, against the
+ * tokens at the top of this file. The vendor block it is re-themed from paints
+ * its chrome with Tailwind's grey ramp and marks the selected nav item with the
+ * same blue it uses for a notification count; here the one crimson in the whole
+ * shell is the active link, so "you are here" cannot be confused with "look at
+ * this".
+ * ------------------------------------------------------------------------ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dash { display: flex; align-items: flex-start; gap: 0; }
+
+.dash-rail {
+  position: sticky;
+  top: 0;
+  flex: none;
+  width: 250px;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  transition: width .24s cubic-bezier(.16, 1, .3, 1);
+}
+.dash-rail[data-collapsed='true'] { width: 64px; }
+@media (prefers-reduced-motion: reduce) { .dash-rail { transition: none; } }
+
+.dash-brand { min-height: 38px; display: flex; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.dash-brand-text { display: flex; flex-direction: column; line-height: 1.3; }
+.dash-brand-detail { font-size: .75rem; color: var(--ink-600); }
+
+.dash-groups { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.dash-group-label {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-500);
+  font-weight: 600;
+  padding: 6px 8px 2px;
+}
+.dash-nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.dash-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 6px 10px;
+  border-radius: var(--radius-control);
+  color: var(--ink-600);
+  text-decoration: none;
+  font-size: .875rem;
+}
+.dash-link:hover { background: var(--subtle); color: var(--ink-900); }
+/* The one crimson in the chrome. */
+.dash-link[aria-current='page'] {
+  background: var(--brand-ground);
+  color: var(--brand-700);
+  font-weight: 500;
+  box-shadow: inset 2px 0 0 var(--brand-action);
+}
+.dash-icon-slot { display: grid; place-content: center; width: 20px; flex: none; }
+.dash-label { flex: 1 1 auto; }
+
+.dash-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--brand-action);
+  color: var(--surface);
+  font-size: .7rem;
+  font-weight: 600;
+  display: inline-grid;
+  place-content: center;
+}
+.dash-rail[data-collapsed='true'] .dash-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: .625rem;
+}
+
+.dash-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink-600);
+  font: inherit;
+  font-size: .875rem;
+  cursor: pointer;
+}
+.dash-toggle:hover { background: var(--subtle); color: var(--ink-900); }
+.dash-toggle .dash-icon { transition: transform .24s cubic-bezier(.16, 1, .3, 1); }
+.dash-toggle .dash-icon[data-rotated='true'] { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .dash-toggle .dash-icon { transition: none; } }
+
+.dash-main { flex: 1 1 auto; min-width: 0; }
+.dash-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.dash-titles { display: flex; flex-direction: column; min-width: 0; }
+.dash-title { font-size: 1rem; color: var(--ink-900); }
+.dash-subtitle { font-size: .75rem; color: var(--ink-600); }
+.dash-content { padding: 20px; display: grid; gap: 20px; align-content: start; }
+
+.dash-stats { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.dash-stat { display: grid; gap: 3px; }
+.dash-stat-label {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 600;
+  color: var(--ink-600);
+}
+.dash-stat-value { font-size: 1.75rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.dash-stat-detail { font-size: .75rem; color: var(--ink-600); }
+.dash-stat[data-tone='warning'] .dash-stat-value { color: var(--warning-text); }
+.dash-stat[data-tone='danger'] .dash-stat-value { color: var(--danger-text); }
+.dash-stat[data-tone='success'] .dash-stat-value { color: var(--success-text); }
+
+/* Bars are drawn from a share, so two equal counts are the same length. */
+.dash-funnel { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.dash-bar { height: 8px; border-radius: 999px; background: var(--subtle); overflow: hidden; margin-top: 4px; }
+.dash-bar-fill { height: 100%; background: var(--brand-action); border-radius: 999px; }
+
+.dash-spark { display: flex; align-items: flex-end; gap: 2px; height: 90px; margin-top: 10px; }
+.dash-spark-col { flex: 1 1 auto; min-width: 2px; background: var(--brand-200); border-radius: 2px 2px 0 0; }
+
+@media (max-width: 900px) {
+  .dash { flex-direction: column; }
+  .dash-rail,
+  .dash-rail[data-collapsed='true'] {
+    position: static;
+    width: 100%;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .dash-groups { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .dash-group { flex: 1 1 auto; }
+  .dash-toggle { display: none; }
+  .dash-content { padding: 16px; }
+}

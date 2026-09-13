@@ -25,6 +25,19 @@ export {
 
 // Blocks — 21st.dev archetypes, re-themed. See registry.ts for provenance.
 export { AppShell, type AppShellProps, type NavGroup, type NavItem } from './blocks/app-shell.js';
+// Phase 8 — the console dashboard shell. `AppShell` stays for the surfaces that
+// only need navigation; this one adds the collapsible rail, the KPI strip and
+// the activity list the admin consoles render under every page.
+export {
+  CollapsibleSidebarDashboard,
+  DashboardActivity,
+  DashboardStatGrid,
+  type ActivityEntry,
+  type CollapsibleSidebarDashboardProps,
+  type DashboardNavGroup,
+  type DashboardNavItem,
+  type DashboardStat,
+} from './blocks/collapsible-sidebar-dashboard.js';
 // Phase 6 — the admin consoles. All three are deliberately un-dismissible or
 // un-shortcuttable; see each component for why.
 export {

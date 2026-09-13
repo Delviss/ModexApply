@@ -53,7 +53,7 @@ model User {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  organisation   Institution?    @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  organisation   Institution?         @relation(fields: [organisationId], references: [id], onDelete: Restrict)
   roles          UserRoleGrant[]
   sessions       Session[]
   consents       ConsentGrant[]
@@ -63,6 +63,7 @@ model User {
   conversations  Conversation[]
   guideSessions  GuideSession[]
   applications   Application[]
+  assessments    DocumentAssessment[]
 
   @@index([organisationId])
   @@map("users")
@@ -254,6 +255,7 @@ model Institution {
   applications         Application[]
   connectors           ConnectorConfig[]
   offers               Offer[]
+  documentAssessments  DocumentAssessment[]
 
   @@index([country])
   @@index([verificationState])
@@ -809,7 +811,8 @@ model DocumentVersion {
 
   createdAt DateTime @default(now())
 
-  document Document @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  document    Document             @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  assessments DocumentAssessment[]
 
   @@unique([documentId, version])
   @@index([scanState])
@@ -2427,4 +2430,83 @@ model Payout {
   @@index([state, initiatedAt])
   @@index([guideId])
   @@map("payouts")
+}
+
+// ---------------------------------------------------------------------------
+// Document assessment (Phase 8, #20)
+// ---------------------------------------------------------------------------
+
+enum AssessmentDecision {
+  accepted
+  more_information
+  rejected
+}
+
+enum AssessmentReason {
+  illegible
+  incomplete
+  wrong_document
+  expired
+  untranslated
+  uncertified
+  mismatched_identity
+  suspected_alteration
+}
+
+/// The human read of an uploaded file, after the scanner has cleared it.
+///
+/// Four columns carry the design, and each of them is the answer to a shortcut
+/// that would have been easier:
+///
+/// `documentVersionId` rather than `documentId`. A verdict belongs to exact
+/// bytes. Keyed on the document, a rejected transcript would silently become an
+/// accepted one the moment the student uploaded any replacement, without a
+/// reviewer ever opening it.
+///
+/// `reasons` is an array of a closed enum, and the service refuses a non-accept
+/// decision with an empty one. "Rejected" with a free-text note saying "wrong"
+/// is a support ticket rather than a decision a student can act on.
+///
+/// `openedAt` records that somebody looked, separately from deciding. Reading a
+/// student's passport scan is the action with the privacy cost, and an audit
+/// trail that only records decisions cannot answer who opened what.
+///
+/// `institutionId` is nullable: Modex reviews a vault document for the student,
+/// a partner reviews one attached to an application it received, and the same
+/// table holds both because the decision means the same thing either way.
+model DocumentAssessment {
+  id                String @id @default(uuid())
+  documentVersionId String
+  documentId        String
+  studentId         String
+
+  institutionId String?
+  applicationId String?
+
+  /// Set the first time a reviewer opens the file. Null means nobody has.
+  openedAt   DateTime?
+  openedById String?
+
+  decision    AssessmentDecision?
+  reasons     AssessmentReason[]  @default([])
+  note        String?
+  reviewerId  String?
+  decidedAt   DateTime?
+  /// The trust case this decision opened, for the one reason that opens one.
+  trustCaseId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documentVersion DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  student         User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  institution     Institution?    @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+
+  /// One live assessment per version per requesting institution. A partner and
+  /// Modex can each hold one; the same partner cannot open two.
+  @@unique([documentVersionId, institutionId])
+  @@index([decision, createdAt])
+  @@index([studentId])
+  @@index([institutionId, decision])
+  @@map("document_assessments")
 }

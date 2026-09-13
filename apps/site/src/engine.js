@@ -45,6 +45,39 @@ export {
   submissionHeadline,
   SUBMISSION_CONSENTS,
   SUBMISSION_CONSENT_NOTICE_VERSION,
+  // Phase 2 §2 — the document vault's connector boundary.
+  isConnectorEligible,
+  connectorBlockReason,
+  isPermanentlyBlocked,
+  // Phase 8 — document assessment. The console below decides what it may open
+  // by calling the same predicate the API's review endpoint calls.
+  ASSESSMENT_REASONS,
+  ASSESSMENT_REASON_TEXT,
+  ASSESSMENT_SLA_HOURS,
+  CORE_DOCUMENT_TYPES,
+  assessmentBlockReason,
+  assessmentState,
+  blocksSubmission,
+  canAssess,
+  decisionText,
+  escalatesToTrust,
+  isOverdue,
+  missingCoreTypes,
+  // Phase 8 — statistics and insights, the same arithmetic the API reports.
+  MIN_COHORT,
+  biggestDropOff,
+  buildFunnel,
+  buildInsightNotes,
+  dailyTrend,
+  distribution,
+  formatHours,
+  formatRate,
+  median,
+  percentile,
+  rate,
+  totalsByCurrency,
+  trendChange,
+  hoursBetween,
 } from '@modex/contracts';
 
 export { evaluateRequirement } from '../../api/src/eligibility/rules.js';

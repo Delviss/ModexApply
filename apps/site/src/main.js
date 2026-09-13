@@ -72,6 +72,8 @@ const FOOTER_SECTIONS = [
     title: 'Consoles',
     links: [
       { label: 'Admin overview', href: '/admin' },
+      { label: 'Insights', href: '/admin/insights' },
+      { label: 'Document assessment', href: '/admin/documents' },
       { label: 'Institution register', href: '/admin/university' },
       { label: 'Catalogue', href: '/admin/catalogue' },
       { label: 'Trust and safety', href: '/admin/trust' },

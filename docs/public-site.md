@@ -2,8 +2,9 @@
 
 <https://delviss.github.io/ModexApply/> serves the product: the catalogue, the
 eligibility engine, the guide directory, chat with the anti-scam pipeline, the
-application journey with its immutable snapshot, the savings view and the four
-admin consoles. It used to serve the delivery board; that board moved to
+application journey with its immutable snapshot, the savings view, the document
+vault and the admin dashboard with its consoles. It used to serve the delivery
+board; that board moved to
 [/board.html](https://delviss.github.io/ModexApply/board.html).
 
 ## What it is
@@ -102,6 +103,67 @@ first stage. Adding more is a two-step loop: enter them in the console, then use
 admin work back into the repository, deliberately, so that a claim reaches the
 public site only through a commit somebody can review.
 
+## The admin dashboard
+
+Every console renders inside one shell: a collapsible rail on the left, a
+headline strip of four figures above the page, and the console itself below.
+The block is the 21st.dev `dashboard-with-collapsible-sidebar`, re-themed onto
+the Red Velvet tokens — the React version lives in `@modex/ui`
+(`blocks/collapsible-sidebar-dashboard.tsx`) and drives the Next.js consoles;
+`apps/site/src/views/admin-shell.js` is the same design in this build's DOM
+builder, because pulling React in to render a sidebar would double the bundle
+for one component.
+
+The rail carries eight sections in two groups. **Workspace** — Overview,
+Insights, Documents — is what any operator does on any day. **Consoles** —
+University intake, Catalogue, Trust, Operations, Finance — are the workspaces a
+role is granted; in the platform proper that lower group is filtered by
+`consolesFor(roles)`, and this build signs you in holding all of them and says
+so on the page rather than hiding that the filter exists.
+
+Two sections are new in Phase 8.
+
+**Insights** reports what happened, and refuses to report what did not happen
+often enough to mean anything. Every figure comes from
+`packages/contracts/src/domain/insights.ts`, which the API's `/v1/admin/insights`
+endpoint also calls, so the demo and the platform cannot report the same
+platform two ways. Three rules are visible on the page: a rate over fewer than
+twenty observations is withheld with its reason printed rather than rounded; the
+funnel counts what happened to a cohort and never divides offers by applications
+into something that could be read as a chance of admission; and money is totalled
+per currency with no combined figure anywhere.
+
+**Documents** is the assessment queue. The list shows a type, a size, a checksum
+and an age — never the file. Opening one is a separate action and it is
+recorded, visibly, in the access log at the bottom of the page; the API audits
+the same act to `audit_events` for the same reason verification evidence is
+audited, because the harm from an unnecessary look at somebody's passport
+happens at the moment of looking. What may be opened is decided by `canAssess`,
+which is expressed as "the connector-eligibility predicate must already pass" —
+one predicate, one answer, so a reviewer is never the person who finds the
+malware. A decision that is not an acceptance has to name at least one reason
+from a closed set, and the sentence the student receives is generated from that
+code: "rejected" with a free-text note reading "wrong" is a support ticket, not
+a decision anybody can act on. A verdict belongs to an exact version, so a
+re-upload clears it rather than inheriting it.
+
+## The document vault
+
+A student uploads a file in **Your profile**. The upload is real in the only
+sense a build with no server can make it real: the file is read in the tab,
+hashed with the same SHA-256 the API verifies uploads against, and its true size
+and type recorded. What does not happen is a network request — and the file's
+contents are never written to `localStorage` either, because a vault that leaves
+passport scans in a shared browser's storage has recreated the problem it exists
+to solve.
+
+A format no university will take, or a file over the size limit, is refused at
+the door rather than admitted in a blocked state: neither is something a scan or
+a reviewer could later resolve, and quarantining a `.txt` file "because the
+scanner flagged it" would be the kind of unearned assurance this product exists
+to remove. The malware scan itself is a server-side job in the platform proper,
+and the page says so.
+
 ## Building and testing it
 
 ```bash
@@ -116,7 +178,10 @@ failed requests, and drives the three journeys that carry the product's
 promises: a submission that only counts once the university confirms receipt, a
 payment solicitation that is warned in-thread and opens an evidenced trust case
 while the guide is suspended automatically, and a university entered against the
-evidence rules — including that a duplicate domain is refused.
+evidence rules — including that a duplicate domain is refused. Phase 8 added
+two more: a document uploaded, checksummed and refused on format, and a reviewer
+who opens it, is recorded doing so, and cannot record a rejection without a
+reason.
 
 ## What the published build does not prove
 

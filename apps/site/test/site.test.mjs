@@ -119,6 +119,8 @@ await go('/applications', 'My applications');
 await go('/profile', 'Your profile');
 await go('/messages', 'Messages');
 await go('/admin', 'Admin consoles');
+await go('/admin/insights', 'Where applications get to');
+await go('/admin/documents', 'Who opened what');
 await go('/admin/university', 'Enter a university');
 await go('/admin/catalogue', 'Programme records');
 await go('/admin/trust', 'Cases');
@@ -218,6 +220,89 @@ await page.click('text=Enter into the register');
 await page.waitForSelector('.notice-danger');
 check('a duplicate domain is refused',
   (await page.textContent('.notice-danger')).includes('already in the register'));
+
+console.log('the admin dashboard shell');
+await go('/admin', 'Admin consoles');
+check('every console renders inside the collapsible rail',
+  (await page.locator('.dash-rail').count()) === 1);
+check('the rail marks exactly one section as current',
+  (await page.locator('.dash-link[aria-current="page"]').count()) === 1);
+check('the KPI strip sits above every console',
+  (await page.locator('.dash-stat').count()) >= 4);
+// Collapsing must not take the labels away from assistive technology — an
+// icon-only rail is a visual affordance, not an information one.
+await page.click('.dash-toggle');
+check('collapsing narrows the rail',
+  (await page.getAttribute('.dash-rail', 'data-collapsed')) === 'true');
+check('the labels survive the collapse for a screen reader',
+  (await page.locator('.dash-link .dash-label.visually-hidden').count()) > 0);
+await page.click('.dash-toggle');
+check('expanding restores them', (await page.getAttribute('.dash-rail', 'data-collapsed')) === 'false');
+
+console.log('uploading a document, and assessing it');
+await page.goto(`${BASE}/#/profile`, { waitUntil: 'load' });
+await page.waitForSelector('#vault-upload');
+const documentsBefore = await page.locator('.card.flat').count();
+await page.setInputFiles('#vault-upload', {
+  name: 'Bank-statement.pdf',
+  mimeType: 'application/pdf',
+  buffer: Buffer.from('%PDF-1.4 a statement'),
+});
+await page.waitForFunction(
+  (count) => document.querySelectorAll('.card.flat').length > count,
+  documentsBefore,
+  { timeout: 8000 },
+);
+check('the uploaded file joins the vault', true);
+check('it carries a real SHA-256 of its own bytes',
+  /sha256:[0-9a-f]{64}/.test(await page.textContent('#main')));
+
+// A format no university will take is refused at the door rather than admitted
+// in a blocked state: nothing a scan or a reviewer does later would fix it.
+const afterUpload = await page.locator('.card.flat').count();
+await page.setInputFiles('#vault-upload', {
+  name: 'Notes.txt',
+  mimeType: 'text/plain',
+  buffer: Buffer.from('not a document'),
+});
+const refusedUpload = await page
+  .waitForFunction(
+    () => [...document.querySelectorAll('.toast')].some((one) =>
+      one.textContent.includes('PDF, JPG or PNG')),
+    null,
+    { timeout: 8000 },
+  )
+  .then(() => true, () => false);
+check('a format no university takes is refused with the reason', refusedUpload);
+check('and it never enters the vault',
+  (await page.locator('.card.flat').count()) === afterUpload);
+
+await page.goto(`${BASE}/#/admin/documents`, { waitUntil: 'load' });
+await page.waitForSelector('text=Open this document');
+// The seeded CV was quarantined by the macro scanner. The gate is the shared
+// `canAssess` predicate, so the console cannot offer an Open control for it.
+check('a quarantined file is never offered for opening',
+  (await page.locator('text=Nobody opens this file').count()) === 1);
+await page.locator('button:has-text("Open this document")').first().click();
+await page.waitForSelector('text=Record the decision', { timeout: 8000 });
+check('opening is recorded in the access log',
+  (await page.textContent('#main')).includes('Who opened what'));
+
+// The refusal that makes a decision actionable: no reason, no rejection.
+await page.selectOption('select[aria-label="Decision"]', 'rejected');
+await page.locator('button:has-text("Record the decision")').first().click();
+// The "opened" toast from a moment ago is still on screen, so this looks at
+// every toast rather than the first one — which is what made this check pass
+// against the wrong message the first time it was written.
+const refused = await page
+  .waitForFunction(
+    () => [...document.querySelectorAll('.toast')].some((one) =>
+      one.textContent.includes('at least one reason')),
+    null,
+    { timeout: 5000 },
+  )
+  .then(() => true, () => false);
+check('a rejection with no reason is refused', refused);
 
 console.log('accessibility basics');
 await go('/programmes', 'Programmes');

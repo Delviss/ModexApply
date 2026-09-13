@@ -11,6 +11,10 @@ import { OpsConsoleController } from './ops-console.controller.js';
 import { OpsConsoleService } from './ops-console.service.js';
 import { FinanceConsoleController } from './finance-console.controller.js';
 import { FinanceConsoleService } from './finance-console.service.js';
+import { DocumentReviewController } from './document-review.controller.js';
+import { DocumentReviewService } from './document-review.service.js';
+import { InsightsController } from './insights.controller.js';
+import { InsightsService } from './insights.service.js';
 import { SanctionsService } from './sanctions.service.js';
 import { ImpersonationService } from './impersonation.service.js';
 
@@ -30,6 +34,8 @@ import { ImpersonationService } from './impersonation.service.js';
     TrustConsoleController,
     OpsConsoleController,
     FinanceConsoleController,
+    DocumentReviewController,
+    InsightsController,
   ],
   providers: [
     UniversityPortalService,
@@ -38,7 +44,9 @@ import { ImpersonationService } from './impersonation.service.js';
     FinanceConsoleService,
     SanctionsService,
     ImpersonationService,
+    DocumentReviewService,
+    InsightsService,
   ],
-  exports: [SanctionsService, ImpersonationService],
+  exports: [SanctionsService, ImpersonationService, DocumentReviewService, InsightsService],
 })
 export class AdminModule {}

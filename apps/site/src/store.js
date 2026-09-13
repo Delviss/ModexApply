@@ -14,7 +14,7 @@
  */
 import { evaluateRequirement, rollUpVerdict, matchGuides } from './engine.js';
 
-const STORAGE_KEY = 'modex-apply/v3';
+const STORAGE_KEY = 'modex-apply/v4';
 
 /** Where `data/platform.json` sits relative to the page, on any host. */
 const dataUrl = new URL('data/platform.json', document.baseURI).href;
@@ -82,7 +82,7 @@ export async function load() {
   } catch {
     saved = null;
   }
-  store.state = saved !== null && saved.version === 3 ? saved : initialState(store.seed);
+  store.state = saved !== null && saved.version === 4 ? saved : initialState(store.seed);
   store.ready = true;
   return store;
 }
@@ -91,7 +91,7 @@ function initialState(seed) {
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 86_400_000).toISOString();
   return {
-    version: 3,
+    version: 4,
     signedIn: true,
     profile: structuredClone(seed.demoStudent.profile),
     documents: structuredClone(seed.demoStudent.documents),
@@ -174,6 +174,17 @@ function initialState(seed) {
     reports: [],
     /** Guides suspended by the anti-scam pipeline in this browser. */
     guideSuspensions: {},
+    /**
+     * Review decisions, keyed by document id (Phase 8).
+     *
+     * Keyed by *version*, in effect: a re-upload bumps `version` and clears the
+     * decision, because a verdict belongs to exact bytes. A rejected transcript
+     * that silently becomes an accepted one the moment any replacement arrives
+     * is the failure this shape exists to prevent.
+     */
+    documentAssessments: {},
+    /** Who opened which document, and when. The privacy cost is in the opening. */
+    documentAccessLog: [],
   };
 }
 
@@ -446,3 +457,182 @@ export function openTrustCase(input) {
 }
 
 export const id = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+
+// ---------------------------------------------------------------------------
+// The document vault (Phase 8)
+//
+// The upload here is real, in the only sense this build can make it real: the
+// file is read in the browser, hashed with the same SHA-256 the API verifies
+// uploads against, and its true size recorded. What does *not* happen is a
+// network request — there is no server behind this page, and a build that
+// pretended to store a passport scan would be worse than one that says it does
+// not. The contents are never written to `localStorage` either: a vault that
+// leaves identity documents in a shared browser's storage has recreated the
+// problem it exists to solve.
+// ---------------------------------------------------------------------------
+
+/** The `DocumentVersion` shape the shared predicates in `engine.js` expect. */
+export function asDocumentVersion(document) {
+  return {
+    id: `${document.id}@${document.version}`,
+    documentId: document.id,
+    version: document.version,
+    objectKey: `documents/${document.id}`,
+    checksum: document.checksum ?? null,
+    sizeBytes: (document.sizeKb ?? 0) * 1024,
+    contentType: document.contentType ?? null,
+    scanState: document.state,
+    scannedAt: document.scannedAt ?? null,
+    scanDetail: document.quarantineReason ?? null,
+    uploadComplete: document.uploadComplete ?? true,
+    createdAt: document.uploadedAt ?? document.scannedAt ?? new Date().toISOString(),
+  };
+}
+
+/** The key a decision hangs on: document *and* version. */
+export const versionKey = (document) => `${document.id}@${document.version}`;
+
+export const assessmentFor = (document) =>
+  store.state.documentAssessments[versionKey(document)] ?? null;
+
+/**
+ * What the platform accepts at the door.
+ *
+ * Deliberately *not* dressed up as a scan. A browser cannot run a malware scan,
+ * and a wrong file format is not a malware verdict — quarantining a `.txt` file
+ * "because the scanner flagged it" would be exactly the unearned assurance this
+ * product exists to remove. These are the two checks that are honest here: a
+ * format no university will take, and a file over the size limit. Both refuse
+ * the upload outright rather than admitting it in a blocked state, because
+ * neither is something a reviewer or a scan could later resolve.
+ *
+ * The malware scan itself happens server-side in the platform proper, and the
+ * vault says so on the page.
+ */
+const ACCEPTED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const MAX_BYTES = 20 * 1024 * 1024;
+
+export function checkUpload(file) {
+  if (file.size > MAX_BYTES) {
+    return `That file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 20 MB — send a smaller scan.`;
+  }
+  if (file.type !== '' && !ACCEPTED_TYPES.includes(file.type)) {
+    return 'Universities take PDF, JPG or PNG. A document in another format cannot be forwarded.';
+  }
+  return null;
+}
+
+/**
+ * Records an uploaded file in the vault.
+ *
+ * Replacing an existing document writes a **new version** rather than editing
+ * the row: an application snapshot names exact versions, and that reference has
+ * to keep resolving after a better scan arrives. The old decision does not
+ * carry over, for the reason in `documentAssessments` above.
+ */
+export async function recordUpload(file, type, { replacing = null } = {}) {
+  const refusal = checkUpload(file);
+  if (refusal !== null) return { refused: refusal, document: null };
+
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  const checksum = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+  const now = new Date().toISOString();
+
+  let recorded = null;
+  update((state) => {
+    const existing = replacing === null
+      ? null
+      : state.documents.find((one) => one.id === replacing) ?? null;
+
+    if (existing !== null) {
+      existing.version += 1;
+      existing.displayName = file.name;
+      existing.sizeKb = Math.max(1, Math.round(file.size / 1024));
+      existing.contentType = file.type || null;
+      existing.checksum = `sha256:${checksum}`;
+      existing.state = 'clean';
+      existing.quarantineReason = null;
+      existing.scannedAt = now;
+      existing.uploadedAt = now;
+      existing.uploadComplete = true;
+      // A new version is a new question for a reviewer.
+      delete state.documentAssessments[versionKey(existing)];
+      recorded = existing;
+      return;
+    }
+
+    const document = {
+      id: id('doc'),
+      type,
+      displayName: file.name,
+      version: 1,
+      state: 'clean',
+      quarantineReason: null,
+      scannedAt: now,
+      uploadedAt: now,
+      uploadComplete: true,
+      sizeKb: Math.max(1, Math.round(file.size / 1024)),
+      contentType: file.type || null,
+      checksum: `sha256:${checksum}`,
+    };
+    state.documents.push(document);
+    recorded = document;
+  });
+
+  return { refused: null, document: recorded };
+}
+
+export function removeDocument(documentId) {
+  update((state) => {
+    state.documents = state.documents.filter((one) => one.id !== documentId);
+  });
+}
+
+/**
+ * Opening a document for review.
+ *
+ * Recorded rather than merely permitted, because the harm from an unnecessary
+ * look at somebody's passport happens at the moment of looking and leaves
+ * nothing else behind to find later. The API audits this for the same reason.
+ */
+export function openForReview(document, by = 'M. Haddad (Trust)') {
+  const key = versionKey(document);
+  update((state) => {
+    const existing = state.documentAssessments[key] ?? null;
+    state.documentAssessments[key] = {
+      ...(existing ?? { decision: null, reasons: [], note: null }),
+      documentId: document.id,
+      version: document.version,
+      openedAt: existing?.openedAt ?? new Date().toISOString(),
+      openedBy: existing?.openedBy ?? by,
+    };
+    state.documentAccessLog.unshift({
+      at: new Date().toISOString(),
+      by,
+      documentId: document.id,
+      version: document.version,
+      type: document.type,
+    });
+    state.documentAccessLog = state.documentAccessLog.slice(0, 50);
+  });
+}
+
+/** Records a decision against the exact version that was opened. */
+export function decideDocument(document, { decision, reasons, note }, by = 'M. Haddad (Trust)') {
+  const key = versionKey(document);
+  update((state) => {
+    const existing = state.documentAssessments[key] ?? {};
+    state.documentAssessments[key] = {
+      ...existing,
+      documentId: document.id,
+      version: document.version,
+      decision,
+      reasons,
+      note: note === '' ? null : note,
+      reviewerId: by,
+      decidedAt: new Date().toISOString(),
+    };
+  });
+}
