@@ -7,8 +7,11 @@ import {
   institutions, programmes, guides, offers, applications, feesUsable, guideById, programmeByKey,
   offerValueMinor,
 } from '../store.js';
-import { guideExpiryUrgency, daysUntil, guideLifecycleDecision } from '../engine.js';
+import { guideExpiryUrgency, daysUntil, guideLifecycleDecision, ASSESSMENT_SLA_HOURS } from '../engine.js';
 import { provenanceStamp, guideStateBadge, sampleChip } from './components.js';
+import { adminShell } from './admin-shell.js';
+import { documentsConsole, documentQueue, documentSummary } from './admin-documents.js';
+import { insightsConsole } from './admin-insights.js';
 
 /** Short enough to read at a glance; the full evidence rule is in the table below. */
 const STAGE_HINTS = {
@@ -19,37 +22,119 @@ const STAGE_HINTS = {
   contracted: 'Contract on file — badge published',
 };
 
+/**
+ * The consoles, in the order the rail lists them.
+ *
+ * `group` is what puts Overview, Insights and Documents above the line and the
+ * four role consoles below it. The split is not decorative: the three above are
+ * things any operator does on any day, and the four below are the workspaces a
+ * specific role is granted. In the platform proper the lower group is filtered
+ * by `consolesFor(roles)`; this build signs you in as somebody holding all of
+ * them and says so on the page rather than pretending the filter does not exist.
+ */
 const CONSOLES = [
-  ['overview', 'Overview', 'Where the four consoles are and who they are for.'],
-  ['university', 'University intake', 'Enter universities, advance them against evidence, export the register.'],
-  ['catalogue', 'Catalogue', 'Programme records, provenance and the freshness sweep.'],
-  ['trust', 'Trust', 'Cases from the anti-scam pipeline and from reports, with their evidence.'],
-  ['ops', 'Operations', 'Connectors, submissions and the alerts that have runbooks.'],
-  ['finance', 'Finance', 'Guide rewards, dual approval, and the rule rewards cannot break.'],
+  ['overview', 'Overview', 'What needs attention today, and where the consoles are.', 'home', 'Workspace'],
+  ['insights', 'Insights', 'Statistics and insights over applications, documents and the register.', 'chart', 'Workspace'],
+  ['documents', 'Documents', 'The assessment queue: student uploads, opened and decided on with reasons.', 'file', 'Workspace'],
+  ['university', 'University intake', 'Enter universities, advance them against evidence, export the register.', 'building', 'Consoles'],
+  ['catalogue', 'Catalogue', 'Programme records, provenance and the freshness sweep.', 'book', 'Consoles'],
+  ['trust', 'Trust', 'Cases from the anti-scam pipeline and from reports, with their evidence.', 'shield', 'Consoles'],
+  ['ops', 'Operations', 'Connectors, submissions and the alerts that have runbooks.', 'activity', 'Consoles'],
+  ['finance', 'Finance', 'Guide rewards, dual approval, and the rule rewards cannot break.', 'coins', 'Consoles'],
 ];
 
+const VIEWS = {
+  overview: overviewConsole,
+  insights: insightsConsole,
+  documents: documentsConsole,
+  university: universityConsole,
+  catalogue: catalogueConsole,
+  trust: trustConsole,
+  ops: opsConsole,
+  finance: financeConsole,
+};
+
+/**
+ * Every console renders inside the dashboard shell.
+ *
+ * The heading stays here, once, above the shell's body: the page keeps exactly
+ * one `<h1>`, and the rail's `aria-current` says where you are. A shell that
+ * also rendered a heading would give every console two of them, which is how a
+ * screen-reader user loses the ability to jump to the start of the content.
+ */
 export function adminView(which, query) {
   const active = CONSOLES.some(([key]) => key === which) ? which : 'overview';
-  const views = {
-    overview: overviewConsole,
-    university: universityConsole,
-    catalogue: catalogueConsole,
-    trust: trustConsole,
-    ops: opsConsole,
-    finance: financeConsole,
-  };
+  const rows = documentQueue();
+  const documents = documentSummary(rows);
+  const meta = CONSOLES.find(([key]) => key === active);
 
-  return h('div', { class: 'wrap stack' },
-    h('div', { class: 'row-between' },
-      h('div', { class: 'stack-sm' },
-        h('h1', {}, 'Admin consoles'),
-        h('p', { class: 'muted' },
-          'Signed in as ', h('strong', {}, 'M. Haddad'), ' · roles: trust_agent, ops, finance, university_admin ',
-          badge('Demo session', 'neutral'))),
-      h('nav', { class: 'chips', 'aria-label': 'Consoles' },
-        CONSOLES.map(([key, label]) =>
-          h('a', { href: `#/admin/${key === 'overview' ? '' : key}`, class: `chip ${key === active ? 'selected' : ''}` }, label)))),
-    views[active](query));
+  const sections = CONSOLES.map(([key, label, , iconName, group]) => ({
+    id: key,
+    label,
+    href: `/admin/${key === 'overview' ? '' : key}`,
+    icon: iconName,
+    group,
+    count: key === 'documents' ? documents.awaitingReview : 0,
+    countLabel: 'documents waiting for a reviewer',
+  }));
+
+  return adminShell({
+    active,
+    sections,
+    title: 'Admin consoles',
+    subtitle: meta?.[2],
+    stats: headlineStats(documents),
+    notice: h('div', { class: 'stack-sm' },
+      h('h1', {}, 'Admin consoles'),
+      h('p', { class: 'muted' },
+        'Signed in as ', h('strong', {}, 'M. Haddad'),
+        ' · roles: trust_agent, ops, finance, university_admin ',
+        badge('Demo session', 'neutral'))),
+    body: VIEWS[active](query),
+  });
+}
+
+/**
+ * The strip above every console.
+ *
+ * The same four numbers on every page, deliberately. An operator who has to
+ * navigate to find out whether anything is on fire will navigate once, at the
+ * start of the day, and then not again.
+ */
+function headlineStats(documents) {
+  const register = registerEntries();
+  const openCases = store.state.trustCases.filter((one) => one.state === 'open').length;
+  const stale = programmes().filter((one) => !feesUsable(one.fees));
+
+  return [
+    {
+      id: 'register',
+      label: 'In the register',
+      value: String(register.length),
+      detail: `${register.filter((one) => one.verificationState !== 'verified').length} not yet verified`,
+    },
+    {
+      id: 'documents',
+      label: 'Documents to assess',
+      value: String(documents.awaitingReview),
+      detail: `${documents.overdue} past the ${ASSESSMENT_SLA_HOURS}-hour commitment`,
+      tone: documents.overdue > 0 ? 'warning' : 'neutral',
+    },
+    {
+      id: 'cases',
+      label: 'Open trust cases',
+      value: String(openCases),
+      detail: 'Anti-scam pipeline and reports',
+      tone: openCases > 0 ? 'danger' : 'success',
+    },
+    {
+      id: 'money',
+      label: 'Money records withheld',
+      value: String(stale.length),
+      detail: 'Confirmation window expired',
+      tone: stale.length > 0 ? 'warning' : 'neutral',
+    },
+  ];
 }
 
 /**
@@ -79,19 +164,38 @@ async function stepUp(action) {
 
 function overviewConsole() {
   const register = registerEntries();
-  const pending = register.filter((one) => one.verificationState !== 'verified');
-  const openCases = store.state.trustCases.filter((one) => one.state === 'open');
+  const rows = documentQueue();
+  const documents = documentSummary(rows);
   const stale = programmes().filter((one) => !feesUsable(one.fees));
 
+  const needsAttention = [
+    documents.overdue > 0
+      ? { tone: 'warning', href: '/admin/documents', text: `${documents.overdue} document(s) past the ${ASSESSMENT_SLA_HOURS}-hour review commitment.` }
+      : null,
+    documents.quarantined > 0
+      ? { tone: 'danger', href: '/admin/documents', text: `${documents.quarantined} upload(s) quarantined by the scan. Nobody opens these.` }
+      : null,
+    stale.length > 0
+      ? { tone: 'warning', href: '/admin/catalogue', text: `${stale.length} programme(s) have a tuition figure past its confirmation window.` }
+      : null,
+    store.state.trustCases.some((one) => one.state === 'open')
+      ? { tone: 'danger', href: '/admin/trust', text: 'A trust case is open and waiting on a decision.' }
+      : null,
+  ].filter((one) => one !== null);
+
   return h('div', { class: 'stack' },
-    h('div', { class: 'grid grid-3' },
-      kpi('In the register', String(register.length), `${pending.length} not yet verified`),
-      kpi('Verified partners', String(institutions().filter((one) => one.verification.state === 'verified').length), 'With a signed partnership'),
-      kpi('Open trust cases', String(openCases.length), 'Anti-scam and reports'),
-      kpi('Money records withheld', String(stale.length), 'Confirmation expired')),
+    card(
+      h('h2', {}, 'What needs attention'),
+      needsAttention.length === 0
+        ? h('p', { class: 'notice notice-success', style: 'margin-top:10px' },
+            'Nothing is overdue, quarantined, withheld or awaiting a trust decision.')
+        : h('div', { class: 'stack-sm', style: 'margin-top:10px' },
+            needsAttention.map((item) =>
+              h('p', { class: `notice notice-${item.tone}` },
+                item.text, ' ', link(item.href, 'Open the console'))))),
 
     h('div', { class: 'grid grid-2' },
-      CONSOLES.slice(1).map(([key, label, blurb]) =>
+      CONSOLES.filter(([key]) => key !== 'overview').map(([key, label, blurb]) =>
         h('article', { class: 'card stack-sm' },
           h('h3', {}, link(`/admin/${key}`, label)),
           h('p', { class: 'small muted' }, blurb)))),
@@ -102,6 +206,10 @@ function overviewConsole() {
         h('strong', {}, 'Entered'), ' with publicly verifiable identity facts only — name, country, city, official '
         + 'domain — and moves forward only when somebody attaches the evidence each stage names. Tuition, deadlines '
         + 'and requirements are never entered from a desk: they arrive from the institution and carry provenance.'),
+      h('p', { class: 'small muted', style: 'margin-top:8px' },
+        'Assessing a document is the same shape of work. A reviewer opens an exact version, and the '
+        + 'act of opening is recorded; a decision that is not an acceptance names a reason from a '
+        + 'closed set, so what the student receives is a sentence they can act on.'),
       h('p', { class: 'small muted', style: 'margin-top:8px' },
         'The register in this build already holds ', String(register.length),
         ' real universities at the first stage. The export button hands you the exact JSON to commit back to ',

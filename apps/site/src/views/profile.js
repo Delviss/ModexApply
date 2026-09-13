@@ -1,5 +1,11 @@
-import { h, link, badge, button, card, table, formatDate, titleCase, toast, money } from '../ui.js';
-import { store, update, id } from '../store.js';
+import { h, link, badge, button, card, table, formatDate, formatDateTime, titleCase, toast } from '../ui.js';
+import {
+  store, update, recordUpload, removeDocument, assessmentFor, asDocumentVersion,
+} from '../store.js';
+import {
+  ASSESSMENT_REASON_TEXT, ASSESSMENT_SLA_HOURS, assessmentState, connectorBlockReason,
+  isConnectorEligible, isPermanentlyBlocked, missingCoreTypes,
+} from '../engine.js';
 
 const DOCUMENT_TYPES = {
   passport: 'Passport',
@@ -77,24 +83,7 @@ export function profileView() {
             'An expired test is not a missing test and not a failing one. The vault warns before it becomes urgent.'))),
 
       h('aside', { class: 'stack' },
-        card(h('h2', {}, 'Document vault'),
-          h('div', { class: 'stack-sm', style: 'margin-top:10px' },
-            documents.map((document) => h('div', { class: 'row-between' },
-              h('div', { class: 'stack-sm' },
-                h('strong', { class: 'small' }, document.displayName),
-                h('span', { class: 'small muted' },
-                  `${DOCUMENT_TYPES[document.type] ?? document.type} · v${document.version} · ${document.sizeKb} kB`),
-                h('span', { class: 'mono small' }, document.checksum)),
-              badge(document.state === 'clean' ? 'Ready to send' : titleCase(document.state),
-                document.state === 'clean' ? 'success' : 'warning')))),
-          h('div', { class: 'stack-sm', style: 'margin-top:14px' },
-            documents.filter((one) => one.state !== 'clean').map((document) =>
-              h('p', { class: 'notice notice-warning small' },
-                `${document.displayName}: ${document.quarantineReason}`))),
-          h('div', { class: 'row', style: 'margin-top:12px' }, addDocumentControl()),
-          h('p', { class: 'small muted', style: 'margin-top:10px' },
-            'In this build a document is recorded, not stored: no file leaves your device and nothing is uploaded. ',
-            'In the platform proper, every version is scanned, versioned and referenced by checksum in the submission snapshot.')),
+        documentVault(documents),
 
         card(h('h3', {}, 'Privacy'),
           h('p', { class: 'small muted', style: 'margin-top:8px' },
@@ -109,20 +98,166 @@ export function profileView() {
             link('/applications', 'What has been shared', { class: 'btn btn-ghost btn-sm' }))))));
 }
 
-function addDocumentControl() {
+/**
+ * The document vault, as the student works it.
+ *
+ * The upload is real in the only sense a build with no server can make it real:
+ * the file is read here, hashed with the same SHA-256 the API verifies uploads
+ * against, and its true size and type recorded. What does not happen is a
+ * network request — and the page says so rather than implying a vault that is
+ * not there.
+ *
+ * Every state a document can be in is shown with the sentence that explains it,
+ * and both come from the shared contract: `connectorBlockReason` writes the
+ * "why can I not send this" line, `assessmentState` the review badge, and
+ * `ASSESSMENT_REASON_TEXT` the reviewer's decision. A student is never shown a
+ * status with no next step.
+ */
+function documentVault(documents) {
+  const missing = missingCoreTypes(documents
+    .filter((one) => isConnectorEligible(asDocumentVersion(one)))
+    .map((one) => one.type));
+
+  return card(
+    h('h2', {}, 'Document vault'),
+    h('p', { class: 'small muted', style: 'margin:6px 0 12px' },
+      'Upload once, reuse for every application. A file is checked before it can be sent, and it '
+      + 'is sent only when you consent to a specific submission that names it.'),
+
+    missing.length > 0
+      ? h('p', { class: 'notice notice-info small' },
+          'Most applications need ', missing.map((type) => DOCUMENT_TYPES[type] ?? type).join(', '),
+          '. This is a completeness check, not a judgement — nothing here predicts an admission decision.')
+      : h('p', { class: 'notice notice-success small' },
+          'Passport, transcript and language test are all on file and usable.'),
+
+    h('div', { class: 'stack-sm', style: 'margin-top:12px' }, documents.map(documentRow)),
+
+    uploadControl(),
+
+    h('p', { class: 'small muted', style: 'margin-top:12px' },
+      'Nothing is uploaded anywhere. The file is read in this tab to compute its checksum and size, '
+      + 'and the contents are never written to this browser’s storage — a vault that leaves passport '
+      + 'scans in a shared browser has recreated the problem it exists to solve. In the platform '
+      + 'proper the bytes go straight to encrypted storage, every version is scanned, and the '
+      + 'submission snapshot references the exact version by checksum.'));
+}
+
+function documentRow(document) {
+  const version = asDocumentVersion(document);
+  const assessment = assessmentFor(document);
+  const blockReason = connectorBlockReason(version);
+  const review = assessmentState(version, assessment === null ? null : {
+    decision: assessment.decision ?? null,
+    startedAt: assessment.openedAt ?? null,
+  });
+
+  return h('article', { class: 'card flat stack-sm', style: 'padding:12px' },
+    h('div', { class: 'row-between' },
+      h('div', { class: 'stack-sm' },
+        h('strong', { class: 'small' }, document.displayName),
+        h('span', { class: 'small muted' },
+          `${DOCUMENT_TYPES[document.type] ?? document.type} · version ${document.version} · ${document.sizeKb} kB`),
+        h('span', { class: 'mono small' }, document.checksum ?? '—')),
+      h('div', { class: 'chips' },
+        badge(blockReason === null ? 'Ready to send' : titleCase(document.state),
+          blockReason === null ? 'success' : 'warning'),
+        reviewBadge(review))),
+
+    blockReason === null ? null : h('p', { class: 'notice notice-warning small' }, blockReason),
+
+    isPermanentlyBlocked(version)
+      ? h('p', { class: 'small muted' },
+          'This version stays blocked. Uploading a clean copy creates a new version; it does not '
+          + 'reopen this one.')
+      : null,
+
+    assessment?.decidedAt != null ? decisionBlock(assessment) : null,
+
+    h('div', { class: 'row' },
+      replaceControl(document),
+      button('Remove', () => {
+        removeDocument(document.id);
+        toast('Removed from the vault. Applications already submitted are unaffected — they reference the exact version that was sent.');
+      }, 'ghost', { class: 'btn btn-ghost btn-sm' })));
+}
+
+const REVIEW_LABELS = {
+  awaiting_scan: 'Being checked',
+  awaiting_review: `Queued for review (within ${ASSESSMENT_SLA_HOURS} h)`,
+  in_review: 'With a reviewer',
+  accepted: 'Accepted by a reviewer',
+  more_information: 'More information needed',
+  rejected: 'Not accepted',
+};
+
+const REVIEW_TONES = {
+  awaiting_scan: 'neutral',
+  awaiting_review: 'neutral',
+  in_review: 'info',
+  accepted: 'success',
+  more_information: 'warning',
+  rejected: 'danger',
+};
+
+function reviewBadge(state) {
+  return badge(REVIEW_LABELS[state] ?? state, REVIEW_TONES[state] ?? 'neutral');
+}
+
+function decisionBlock(assessment) {
+  return h('div', { class: `notice notice-${assessment.decision === 'accepted' ? 'success' : assessment.decision === 'rejected' ? 'danger' : 'warning'} small` },
+    h('strong', {}, `Reviewed ${formatDateTime(assessment.decidedAt)}. `),
+    h('ul', { style: 'margin:6px 0 0;padding-left:18px' },
+      [
+        ...(assessment.reasons ?? []).map((reason) => ASSESSMENT_REASON_TEXT[reason]),
+        ...(assessment.note ? [assessment.note] : []),
+      ].map((line) => h('li', {}, line))));
+}
+
+/** Replacing a document writes a new version; the old decision does not carry. */
+function replaceControl(document) {
+  const input = h('input', {
+    type: 'file',
+    accept: '.pdf,.jpg,.jpeg,.png',
+    class: 'visually-hidden',
+    id: `replace-${document.id}`,
+    onChange: async (event) => {
+      const file = event.target.files?.[0];
+      if (file === undefined) return;
+      const { refused } = await recordUpload(file, document.type, { replacing: document.id });
+      event.target.value = '';
+      toast(refused
+        ?? `Uploaded as version ${document.version + 1}. A new version needs a new look, so any earlier decision no longer applies.`);
+    },
+  });
+  return h('span', {},
+    input,
+    h('label', { class: 'btn btn-secondary btn-sm', for: `replace-${document.id}` }, 'Upload a new version'));
+}
+
+function uploadControl() {
   const type = h('select', { 'aria-label': 'Document type', style: 'width:auto' },
     Object.entries(DOCUMENT_TYPES).map(([value, label]) => h('option', { value }, label)));
-  const name = h('input', { type: 'text', placeholder: 'File name', 'aria-label': 'File name' });
-  return h('div', { class: 'row' }, type, name,
-    button('Record', () => {
-      if (name.value.trim() === '') return;
-      update((state) => state.documents.push({
-        id: id('doc'), type: type.value, displayName: name.value.trim(), version: 1,
-        state: 'clean', scannedAt: new Date().toISOString(), sizeKb: 0,
-        checksum: `sha256:${Math.random().toString(16).slice(2, 6)}…${Math.random().toString(16).slice(2, 6)}`,
-      }));
-      toast('Recorded in the vault, scanned clean.');
-    }, 'secondary', { class: 'btn btn-secondary btn-sm' }));
+
+  const input = h('input', {
+    type: 'file',
+    accept: '.pdf,.jpg,.jpeg,.png',
+    class: 'visually-hidden',
+    id: 'vault-upload',
+    onChange: async (event) => {
+      const file = event.target.files?.[0];
+      if (file === undefined) return;
+      const { refused } = await recordUpload(file, type.value);
+      event.target.value = '';
+      toast(refused ?? 'Added to the vault. It is queued for review.');
+    },
+  });
+
+  return h('div', { class: 'row', style: 'margin-top:14px' },
+    h('label', { class: 'field' }, 'What is this document?', type),
+    input,
+    h('label', { class: 'btn btn-primary btn-sm', for: 'vault-upload' }, 'Choose a file'),
+    h('span', { class: 'small muted' }, 'PDF, JPG or PNG, up to 20 MB.'));
 }
 
 function missingFields(profile) {

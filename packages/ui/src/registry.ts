@@ -54,6 +54,19 @@ export const BLOCK_REGISTRY: readonly BlockEntry[] = Object.freeze([
     note: 'Org-switcher pattern folded into AppShell rather than shipped as a second shell.',
   },
   {
+    registry: '@tomisloading/dashboard-with-collapsible-sidebar',
+    name: 'Dashboard with collapsible sidebar',
+    section: 'app-shell',
+    primary: false,
+    status: 'implemented',
+    implementation: 'CollapsibleSidebarDashboard',
+    note:
+      'The admin console shell from Phase 8. Vendor ships Tailwind grey/blue utilities, a `.dark` class toggle and '
+      + 'lucide-react; all three were replaced — tokens for the palette, `data-theme` for the toggle, and the in-house '
+      + 'icon set, because a collapsed rail is all icon and a second icon vocabulary is a navigation bug waiting to '
+      + 'happen. Notification dots became labelled counts.',
+  },
+  {
     registry: '@unlumen/sidebar-001',
     name: 'Animated Sidebar',
     section: 'app-shell',

@@ -14,7 +14,8 @@ relationship get separated:
 
 **The platform is live at [delviss.github.io/ModexApply](https://delviss.github.io/ModexApply/)** — the
 catalogue, the eligibility engine, the guide network with its anti-scam pipeline, the
-application journey and the four admin consoles, running as a static build in your browser.
+application journey, the document vault and the admin dashboard with its consoles, running
+as a static build in your browser.
 See [docs/public-site.md](docs/public-site.md) for what that build is and, importantly, what its
 data is and is not. The delivery board that used to live at that URL moved to
 [/board.html](https://delviss.github.io/ModexApply/board.html).
@@ -30,12 +31,13 @@ apps/
                  code rather than reimplementing it
   api/           NestJS + Prisma — platform core, catalogue, search, vault,
                  eligibility, the guide network, the anti-scam pipeline,
-                 applications, the university connector layer, offers, the four
-                 admin consoles, rate limiting and the privacy workflows
+                 applications, the university connector layer, offers, the admin
+                 consoles, document assessment, statistics and insights, rate
+                 limiting and the privacy workflows
   web/           Next.js — public pages, student workspace, guide directory,
                  messaging, the public Q&A, the application wizard, the
-                 submission tracker, the price panel, the four admin consoles
-                 and the "who has my data" view
+                 submission tracker, the price panel, the admin dashboard with
+                 its consoles, and the "who has my data" view
 packages/
   contracts/     Shared domain contracts (money, errors, access, provenance…)
   ui/            Red Velvet design system — tokens, blocks, signature components
@@ -75,7 +77,11 @@ being a source change that never reaches the URL people visit.
 
 Entering universities is admin work with its own rules, documented in
 [docs/public-site.md](docs/public-site.md#the-institution-register): identity
-facts only, evidence per stage, and a verified badge that expires.
+facts only, evidence per stage, and a verified badge that expires. Assessing a
+student's uploaded document is the same shape of work and is documented next to
+it: an exact version is opened, the opening is recorded, and a decision that is
+not an acceptance names a reason from a closed set so the student is told
+something they can act on.
 
 ## The checks that matter
 
