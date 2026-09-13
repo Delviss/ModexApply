@@ -180,28 +180,30 @@ main:has(> div > .hero) { padding-block: 0; }
 .muted { color: var(--ink-600); }
 .small { font-size: .8125rem; }
 .mono { font-family: var(--font-mono); font-size: .8125rem; }
-.hide-sm { display: initial; }
-@media (max-width: 720px) { .hide-sm { display: none; } }
 
-/* --- Chrome ------------------------------------------------------------- */
-.demo-strip {
-  background: var(--brand-ground);
-  border-bottom: 1px solid var(--border);
-  color: var(--ink-800);
-  font-size: .8125rem;
-  padding-block: 7px;
-}
-.demo-strip strong { color: var(--brand-700); }
-
+/* --- Header --------------------------------------------------------------
+ *
+ * One row, 56px, and four destinations. The tagline, the public-build notice,
+ * the consoles and the project links all moved into the footer: a header that
+ * explains the product competes with the page under it, and on a phone the old
+ * one cost three stacked rows before any content appeared.
+ */
 header.topbar {
-  position: sticky; top: 0; z-index: 20;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(8px);
+  position: sticky; top: 0; z-index: 30;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
-.topbar .wrap { display: flex; align-items: center; gap: 18px; height: 60px; }
-.brandmark { display: flex; align-items: center; gap: 9px; font-weight: 700; color: var(--ink-900); text-decoration: none; letter-spacing: -.02em; }
-.brandmark .dot { width: 22px; height: 22px; border-radius: 6px; background: var(--brand-600); display: grid; place-items: center; color: #FFFFFF; font-size: 12px; font-weight: 700; }
+.topbar__inner { display: flex; align-items: center; gap: 16px; height: 56px; }
+
+.brandmark {
+  display: flex; align-items: center; gap: 9px; flex: none;
+  font-weight: 700; color: var(--ink-900); text-decoration: none; letter-spacing: -.02em;
+}
+.brandmark .dot {
+  width: 22px; height: 22px; border-radius: 6px; background: var(--brand-600);
+  display: grid; place-items: center; color: #FFFFFF; font-size: 12px; font-weight: 700;
+}
 /* The dark ink only applies on dark, where --brand-600 is the light 400 step.
    Unguarded, `:root:not([data-theme='light'])` matches the *light* default too
    — which put near-black on crimson at 2.6:1, an axe failure on every page. */
@@ -209,28 +211,109 @@ header.topbar {
   :root:not([data-theme='light']) .brandmark .dot { color: #1A1416; }
 }
 :root[data-theme='dark'] .brandmark .dot { color: #1A1416; }
-nav.primary { display: flex; gap: 2px; margin-left: auto; flex-wrap: wrap; }
+
+/* Centred between the mark and the actions, so the row reads as three blocks
+   rather than one long drift to the right. */
+nav.primary { display: flex; gap: 2px; margin-inline: auto; }
 nav.primary a {
-  padding: 7px 11px; border-radius: var(--radius-control); text-decoration: none;
+  padding: 6px 12px; border-radius: 9999px; text-decoration: none;
   color: var(--ink-600); font-weight: 500; font-size: .875rem; white-space: nowrap;
 }
 nav.primary a:hover { background: var(--subtle); color: var(--ink-900); }
 nav.primary a[aria-current='page'] { background: var(--brand-ground); color: var(--brand-700); }
-@media (max-width: 900px) {
-  .topbar .wrap { height: auto; padding-block: 10px; flex-wrap: wrap; }
-  /* One scrolling row rather than three stacked ones on a phone. */
-  nav.primary { margin-left: 0; width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
-  nav.primary a { flex: 0 0 auto; }
+
+.topbar__actions { display: flex; align-items: center; gap: 4px; margin-inline-start: auto; flex: none; }
+.topbar__account {
+  padding: 6px 12px; border-radius: 9999px; text-decoration: none;
+  color: var(--ink-600); font-weight: 500; font-size: .875rem;
+}
+.topbar__account:hover { background: var(--subtle); color: var(--ink-900); }
+
+.icon-button {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0;
+  border: 0; border-radius: 9999px; background: transparent; color: var(--ink-600); cursor: pointer;
+}
+.icon-button:hover { background: var(--subtle); color: var(--ink-900); }
+.icon-button .icon { display: block; }
+
+/* The menu and its panel exist below 860px only; above it the row fits. */
+.topbar__menu { display: none; }
+.topbar__menu .icon:last-child { display: none; }
+.topbar__menu[aria-expanded='true'] .icon:first-child { display: none; }
+.topbar__menu[aria-expanded='true'] .icon:last-child { display: block; }
+
+.topbar__drawer { border-top: 1px solid var(--border); background: var(--surface); }
+.topbar__drawer[hidden] { display: none; }
+.topbar__drawer-nav { display: flex; flex-direction: column; padding-block: 8px; }
+.topbar__drawer-nav a {
+  padding: 10px 4px; border-radius: var(--radius-control); text-decoration: none;
+  color: var(--ink-800); font-weight: 500; font-size: .9375rem;
+}
+.topbar__drawer-nav a[aria-current='page'] { color: var(--brand-700); }
+
+@media (max-width: 860px) {
+  nav.primary, .topbar__account { display: none; }
+  .topbar__menu { display: inline-grid; }
 }
 
-footer.site {
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  padding-block: 28px 40px;
-  color: var(--ink-600);
-  font-size: .8125rem;
+/* --- Footer --------------------------------------------------------------
+ *
+ * Re-themed from `@aliimam/footer-section-4`: a branded card beside a card of
+ * links, one third to two thirds. The author's cobalt ground and their noise
+ * filter's fixed opacity are gone — the ground is `--brand-band`, the same
+ * token the landing page's closing band uses, so the two read as one surface
+ * in both themes.
+ */
+.site-footer { padding-block: 40px 48px; background: var(--canvas); border-top: 1px solid var(--border); }
+.site-footer__grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+@media (max-width: 900px) { .site-footer__grid { grid-template-columns: minmax(0, 1fr); } }
+
+.site-footer__brand {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 40px;
+  padding: 28px; border-radius: var(--radius-sheet);
+  background: var(--brand-band); color: var(--brand-band-fg);
 }
-footer.site a { color: var(--ink-600); }
+/* The block's feTurbulence overlay, baked into the background so the card stays
+   one element and the filter never has to be re-declared per theme. */
+.site-footer__brand::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .22;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.brandmark--onband { color: inherit; }
+.brandmark--onband .dot { background: var(--brand-band-fg); color: var(--brand-band); }
+/* The guard above flips the mark's ink on dark; on this ground it must not. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .brandmark--onband .dot { color: var(--brand-band); }
+}
+:root[data-theme='dark'] .brandmark--onband .dot { color: var(--brand-band); }
+
+.site-footer__brand-base { display: flex; flex-direction: column; gap: 14px; }
+.site-footer__tagline { font-size: 1.125rem; font-weight: 600; letter-spacing: -.01em; }
+.site-footer__note { font-size: .8125rem; opacity: .9; }
+.site-footer__note a { color: inherit; font-weight: 600; }
+.site-footer__copyright { font-size: .75rem; opacity: .75; }
+/* A crimson focus ring on a crimson ground is not a focus ring. */
+.site-footer__brand :where(a, button):focus-visible { outline-color: var(--brand-band-fg); }
+
+.site-footer__links {
+  display: flex; flex-direction: column; justify-content: space-between; gap: 36px;
+  padding: 28px; border-radius: var(--radius-sheet);
+  background: var(--surface); border: 1px solid var(--border);
+}
+.site-footer__columns { display: grid; gap: 24px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 620px) { .site-footer__columns { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.site-footer__column { display: flex; flex-direction: column; gap: 12px; }
+.site-footer__heading { font-size: .8125rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-900); }
+.site-footer__list { display: flex; flex-direction: column; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.site-footer__list a { color: var(--ink-600); text-decoration: none; font-size: .875rem; }
+.site-footer__list a:hover { color: var(--ink-900); text-decoration: underline; }
+
+.site-footer__base {
+  display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  border-top: 1px solid var(--border); padding-block-start: 20px;
+}
+.site-footer__legal { flex: 1 1 420px; font-size: .75rem; color: var(--ink-600); }
 
 /* --- Surfaces ----------------------------------------------------------- */
 .card {
