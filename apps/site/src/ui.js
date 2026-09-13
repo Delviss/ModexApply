@@ -27,6 +27,25 @@ export function h(tag, props = {}, ...children) {
   return element;
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * The same builder in the SVG namespace.
+ *
+ * `document.createElement('svg')` produces an HTML element that never paints,
+ * so the chrome's icons need their own constructor. Attributes only — an icon
+ * carries no text, and the accessible name lives on the control around it.
+ */
+export function svg(tag, props = {}, ...children) {
+  const element = document.createElementNS(SVG_NS, tag);
+  for (const [key, value] of Object.entries(props ?? {})) {
+    if (value === null || value === undefined || value === false) continue;
+    element.setAttribute(key, value === true ? '' : String(value));
+  }
+  append(element, children);
+  return element;
+}
+
 export function append(parent, children) {
   for (const child of children.flat(4)) {
     if (child === null || child === undefined || child === false) continue;

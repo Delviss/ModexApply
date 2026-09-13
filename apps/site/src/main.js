@@ -1,5 +1,5 @@
 import './styles.css';
-import { h, clear, link, button, append } from './ui.js';
+import { h, svg, clear, link, button, append } from './ui.js';
 import { load, store, subscribe, resetLocalState } from './store.js';
 import { homeView } from './views/home.js';
 import { catalogueView, compareView, programmeView, institutionView } from './views/catalogue.js';
@@ -33,15 +33,76 @@ const ROUTES = [
   [['admin', ':console'], (route) => adminView(route.params.console, route.query)],
 ];
 
+/**
+ * The header carries four destinations and nothing else.
+ *
+ * Everything that used to sit up here — the tagline, the public-build
+ * disclosure, the consoles, the account pages and the project links — is in the
+ * footer now. A header is for moving through the product; a footer is where the
+ * explaining belongs, and it costs a reader nothing to scroll past.
+ */
 const NAV = [
   ['/programmes', 'Programmes'],
   ['/guides', 'Student guides'],
   ['/questions', 'Questions'],
-  ['/savings', 'Savings'],
   ['/applications', 'My applications'],
-  ['/profile', 'Profile'],
-  ['/admin', 'Admin'],
 ];
+
+/** The rest of the site, grouped into the footer's four columns. */
+const FOOTER_SECTIONS = [
+  {
+    title: 'Explore',
+    links: [
+      { label: 'Programmes', href: '/programmes' },
+      { label: 'Compare programmes', href: '/programmes/compare' },
+      { label: 'Student guides', href: '/guides' },
+      { label: 'Questions', href: '/questions' },
+      { label: 'Savings', href: '/savings' },
+    ],
+  },
+  {
+    title: 'Your account',
+    links: [
+      { label: 'My applications', href: '/applications' },
+      { label: 'Messages', href: '/messages' },
+      { label: 'Profile', href: '/profile' },
+    ],
+  },
+  {
+    title: 'Consoles',
+    links: [
+      { label: 'Admin overview', href: '/admin' },
+      { label: 'Institution register', href: '/admin/university' },
+      { label: 'Catalogue', href: '/admin/catalogue' },
+      { label: 'Trust and safety', href: '/admin/trust' },
+      { label: 'Operations', href: '/admin/ops' },
+      { label: 'Finance', href: '/admin/finance' },
+    ],
+  },
+  {
+    title: 'Project',
+    links: [
+      { label: 'Source', href: 'https://github.com/Delviss/ModexApply', external: true },
+      { label: 'Delivery board', href: 'board.html', external: true },
+      {
+        label: 'Architecture',
+        href: 'https://github.com/Delviss/ModexApply/blob/main/docs/architecture.md',
+        external: true,
+      },
+      {
+        label: 'Guide safety',
+        href: 'https://github.com/Delviss/ModexApply/blob/main/docs/guide-safety.md',
+        external: true,
+      },
+      {
+        label: 'Privacy',
+        href: 'https://github.com/Delviss/ModexApply/blob/main/docs/privacy.md',
+        external: true,
+      },
+    ],
+  },
+];
+
 
 function parseRoute() {
   const raw = location.hash.replace(/^#/, '') || '/';
@@ -71,50 +132,130 @@ function notFoundView() {
     h('p', {}, link('/programmes', 'Search programmes'), ' · ', link('/', 'Home')));
 }
 
+// --- Chrome -----------------------------------------------------------------
+
+/** A stroked icon at the header's size. The name lives on the control. */
+function icon(...children) {
+  return svg('svg', {
+    class: 'icon',
+    viewBox: '0 0 24 24',
+    width: '18',
+    height: '18',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '1.7',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+    'aria-hidden': 'true',
+    focusable: 'false',
+  }, ...children);
+}
+
+/** A disc lit on one side: the same mark whichever theme is showing. */
+const themeIcon = () => icon(
+  svg('circle', { cx: '12', cy: '12', r: '8.2' }),
+  svg('path', { d: 'M12 3.8a8.2 8.2 0 0 1 0 16.4z', fill: 'currentColor', stroke: 'none' }),
+);
+
+const menuIcon = () => icon(svg('path', { d: 'M3.75 7h16.5M3.75 12h16.5M3.75 17h16.5' }));
+const closeIcon = () => icon(svg('path', { d: 'M6 6l12 12M18 6L6 18' }));
+
 function chrome() {
-  const themeButton = button('Theme', toggleTheme, 'ghost', {
-    'aria-label': 'Switch between the light and dark theme',
-    title: 'Switch theme',
-  });
+  const drawer = h('div', { class: 'topbar__drawer', id: 'topbar-drawer', hidden: true },
+    h('div', { class: 'wrap' },
+      h('nav', { class: 'topbar__drawer-nav', 'data-nav': 'true', 'aria-label': 'All pages' },
+        NAV.map(([href, label]) => link(href, label)),
+        link('/savings', 'Savings'),
+        link('/profile', 'Profile'),
+        link('/admin', 'Admin'))));
+
+  const menuButton = h('button', {
+    type: 'button',
+    class: 'icon-button topbar__menu',
+    'aria-expanded': 'false',
+    'aria-controls': 'topbar-drawer',
+    'aria-label': 'Open the navigation menu',
+    onClick: () => setDrawer(drawer.hidden),
+  }, menuIcon(), closeIcon());
+
+  /**
+   * Opening the menu is a route change waiting to happen, so it closes on a
+   * hash change as well as on the button — otherwise tapping a link leaves the
+   * panel sitting over the page it just navigated to.
+   */
+  function setDrawer(open) {
+    drawer.hidden = !open;
+    menuButton.setAttribute('aria-expanded', String(open));
+    menuButton.setAttribute('aria-label', open ? 'Close the navigation menu' : 'Open the navigation menu');
+  }
+  addEventListener('hashchange', () => setDrawer(false));
 
   return h('div', {},
-    h('div', { class: 'demo-strip' },
-      h('div', { class: 'wrap' },
-        h('strong', {}, 'Public build. '),
-        'The platform runs entirely in your browser — nothing you enter here leaves this device. ',
-        'The catalogue is sample data; the ',
-        link('/admin/university', 'institution register'),
-        ' holds real universities with publicly verifiable identity facts only.')),
     h('header', { class: 'topbar' },
-      h('div', { class: 'wrap' },
+      h('div', { class: 'wrap topbar__inner' },
         h('a', { class: 'brandmark', href: '#/' }, h('span', { class: 'dot' }, 'M'), 'Modex Apply'),
-        h('span', { class: 'small muted hide-sm' }, 'Apply direct. Ask students. Save more.'),
-        h('nav', { class: 'primary', id: 'primary-nav', 'aria-label': 'Primary' },
+        h('nav', { class: 'primary', id: 'primary-nav', 'data-nav': 'true', 'aria-label': 'Primary' },
           NAV.map(([href, label]) => link(href, label))),
-        themeButton)),
+        h('div', { class: 'topbar__actions' },
+          link('/profile', 'Profile', { class: 'topbar__account' }),
+          h('button', {
+            type: 'button',
+            class: 'icon-button',
+            'aria-label': 'Switch between the light and dark theme',
+            title: 'Switch theme',
+            onClick: toggleTheme,
+          }, themeIcon()),
+          menuButton)),
+      drawer),
     h('main', { id: 'main', tabindex: '-1' }),
     footer());
 }
 
+/**
+ * Two cards, after `@aliimam/footer-section-4`.
+ *
+ * The crimson card states who this is and what the build is; the surface card
+ * holds every destination the header no longer carries. The block ships with a
+ * newsletter sign-up in the second card's base, which this build cannot
+ * honestly offer — nothing entered here leaves the device — so that slot holds
+ * the standing disclaimer and the one control that acts on local data instead.
+ */
 function footer() {
-  return h('footer', { class: 'site' },
-    h('div', { class: 'wrap stack-sm' },
-      h('div', { class: 'row' },
-        h('strong', {}, 'Modex Apply'),
-        h('span', {}, '·'),
-        h('a', { href: 'https://github.com/Delviss/ModexApply' }, 'Source'),
-        h('a', { href: 'board.html' }, 'Delivery board'),
-        h('a', { href: 'https://github.com/Delviss/ModexApply/blob/main/docs/architecture.md' }, 'Architecture'),
-        h('a', { href: 'https://github.com/Delviss/ModexApply/blob/main/docs/guide-safety.md' }, 'Guide safety'),
-        h('a', { href: 'https://github.com/Delviss/ModexApply/blob/main/docs/privacy.md' }, 'Privacy'),
-        button('Reset this browser’s data', async () => {
-          resetLocalState();
-          location.hash = '#/';
-        }, 'ghost', { class: 'btn btn-ghost btn-sm' })),
-      h('p', {},
-        'Modex Apply is not an education agent, an immigration adviser or an admissions decision maker. ',
-        'Universities decide admission; governments decide visas. Guides are current students, never staff, ',
-        'and never collect tuition or application fees.')));
+  return h('footer', { class: 'site-footer' },
+    h('div', { class: 'wrap site-footer__grid' },
+      h('div', { class: 'site-footer__brand' },
+        h('a', { class: 'brandmark brandmark--onband', href: '#/' },
+          h('span', { class: 'dot' }, 'M'), 'Modex Apply'),
+        h('div', { class: 'site-footer__brand-base' },
+          h('p', { class: 'site-footer__tagline' }, 'Apply direct. Ask students. Save more.'),
+          h('p', { class: 'site-footer__note' },
+            h('strong', {}, 'Public build. '),
+            'The platform runs entirely in your browser — nothing you enter here leaves this device. ',
+            'The catalogue is sample data; the ',
+            link('/admin/university', 'institution register'),
+            ' holds real universities with publicly verifiable identity facts only.'),
+          h('p', { class: 'site-footer__copyright' },
+            `© ${new Date().getFullYear()} Modex Apply. All rights reserved.`))),
+
+      h('div', { class: 'site-footer__links' },
+        h('div', { class: 'site-footer__columns' },
+          FOOTER_SECTIONS.map((section) =>
+            h('div', { class: 'site-footer__column' },
+              h('h2', { class: 'site-footer__heading' }, section.title),
+              h('ul', { class: 'site-footer__list' },
+                section.links.map((entry) =>
+                  h('li', {}, entry.external
+                    ? h('a', { href: entry.href }, entry.label)
+                    : link(entry.href, entry.label))))))),
+        h('div', { class: 'site-footer__base' },
+          h('p', { class: 'site-footer__legal' },
+            'Modex Apply is not an education agent, an immigration adviser or an admissions decision maker. ',
+            'Universities decide admission; governments decide visas. Guides are current students, never staff, ',
+            'and never collect tuition or application fees.'),
+          button('Reset this browser’s data', () => {
+            resetLocalState();
+            location.hash = '#/';
+          }, 'secondary', { class: 'btn btn-secondary btn-sm' })))));
 }
 
 function toggleTheme() {
@@ -180,7 +321,7 @@ function paint() {
     ? document.activeElement.dataset.focusKey ?? null
     : null;
 
-  for (const anchor of document.querySelectorAll('#primary-nav a')) {
+  for (const anchor of document.querySelectorAll('[data-nav] a')) {
     const href = anchor.getAttribute('href').slice(1);
     const active = href === '/' ? route.path === '/' : route.path.startsWith(href);
     if (active) anchor.setAttribute('aria-current', 'page');
