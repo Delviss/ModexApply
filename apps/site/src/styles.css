@@ -345,25 +345,80 @@ nav.primary a[aria-current='page'] { background: var(--brand-ground); color: var
  * carrying one action and no state.
  * ----------------------------------------------------------------------- */
 
+.lp-hero__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: 32px 48px;
+  align-items: center;
+  padding-block: 8px 0;
+}
+@media (max-width: 900px) {
+  .lp-hero__grid { grid-template-columns: 1fr; }
+}
 .lp-hero__body {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 8px 20px 0;
-  text-align: center;
+  align-items: flex-start;
+  gap: 18px;
+  max-width: 640px;
+  text-align: left;
 }
-.lp-hero__body > .badge { align-self: center; }
+.lp-hero__body > .badge { align-self: flex-start; }
 .lp-hero__title {
-  font-size: clamp(1.9rem, 5vw, 3.1rem);
-  max-width: 20ch;
+  font-size: clamp(1.9rem, 4.4vw, 3.1rem);
+  max-width: 18ch;
   letter-spacing: -.025em;
   text-wrap: balance;
 }
-.lp-hero__subtitle { font-size: 1.0625rem; color: var(--ink-600); max-width: 60ch; }
-.lp-hero__disclaimer { font-size: .75rem; color: var(--ink-600); max-width: 68ch; }
+.lp-hero__subtitle { font-size: 1.0625rem; color: var(--ink-600); max-width: 58ch; }
+.lp-hero__disclaimer { font-size: .75rem; color: var(--ink-600); max-width: 62ch; }
+
+/* The decorative composition beside the hero copy: brand-coloured tiles in
+   place of the stock-photo collage this pattern usually opens with, and a
+   floating card that shows a real product mechanic — four verdicts, never
+   one — instead of an invented acceptance rate. */
+.lp-hero__visual {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  aspect-ratio: 1;
+  margin-inline: auto;
+}
+.lp-hero__tile {
+  position: absolute;
+  width: 30%;
+  aspect-ratio: 1;
+  border-radius: 24%;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--elevation-2);
+  transform: rotate(45deg);
+}
+.lp-hero__tile .icon { transform: rotate(-45deg); width: 26px; height: 26px; }
+.lp-hero__tile--a { top: 0; left: 34%; width: 40%; background: var(--brand-600); color: #FFFFFF; z-index: 2; }
+.lp-hero__tile--b { top: 26%; left: 0; background: var(--ink-800); color: var(--canvas); }
+.lp-hero__tile--c { top: 26%; right: 0; background: var(--brand-700); color: #FFFFFF; }
+.lp-hero__tile--d { bottom: 6%; left: 16%; background: var(--brand-200); color: var(--brand-700); }
+.lp-hero__tile--e { bottom: 6%; right: 12%; background: var(--ink-600); color: var(--canvas); }
+.lp-hero__float {
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  transform: translate(-50%, 40%);
+  width: min(230px, 88%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--elevation-3);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lp-hero__float-title { font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-600); }
+.lp-hero__float-legend { display: flex; flex-wrap: wrap; gap: 5px; }
+.lp-hero__float-legend .badge { font-size: .6875rem; padding: 1px 7px; }
+@media (max-width: 480px) { .lp-hero__visual { max-width: 260px; } }
 
 /* The search is one control to the eye: the first step on the page is typing. */
 .lp-search {
@@ -393,14 +448,35 @@ nav.primary a[aria-current='page'] { background: var(--brand-ground); color: var
   .lp-search .btn { width: 100%; }
 }
 
-.lp-proof { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 40px; }
-.lp-proof__point { display: flex; flex-direction: column; gap: 2px; max-width: 240px; }
+.lp-proof {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-block-start: 28px;
+}
+.lp-proof__point {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-card); box-shadow: var(--elevation-1);
+}
+.lp-proof__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .lp-proof__value {
-  font-size: 1.875rem; font-weight: 700; letter-spacing: -.02em;
+  font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em;
   font-variant-numeric: tabular-nums; color: var(--brand-700);
 }
-.lp-proof__label { font-size: .875rem; font-weight: 600; color: var(--ink-900); }
+.lp-proof__label { font-size: .8125rem; font-weight: 600; color: var(--ink-900); }
 .lp-proof__source { font-size: .75rem; color: var(--ink-600); }
+
+/* A small filled square carrying an icon — the one repeating unit behind the
+   proof row, the feature checklist and the FAQ, so a visitor learns its shape
+   once. Two sizes: `sm` for a list bullet, `md` for a stat card. */
+.lp-icon-chip {
+  flex: none; display: grid; place-items: center; border-radius: 10px;
+  background: var(--brand-ground); color: var(--brand-700);
+}
+.lp-icon-chip--sm { width: 28px; height: 28px; border-radius: 8px; }
+.lp-icon-chip--md { width: 38px; height: 38px; }
 
 /* --- Destination rail ---------------------------------------------------- */
 
@@ -470,7 +546,11 @@ nav.primary a[aria-current='page'] { background: var(--brand-ground); color: var
 .lp-section__head h2 { font-size: clamp(1.375rem, 3vw, 2rem); letter-spacing: -.02em; }
 .lp-section__description { font-size: 1rem; color: var(--ink-600); }
 
-.lp-audience { display: flex; flex-direction: column; gap: 8px; }
+.lp-audience { display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; }
+.lp-audience::before {
+  content: ''; position: absolute; inset-block-start: 0; inset-inline-start: 0;
+  width: 100%; height: 3px; background: var(--brand-600);
+}
 .lp-audience__points { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; font-size: .875rem; color: var(--ink-800); }
 .lp-audience__points li { position: relative; padding-inline-start: 16px; }
 .lp-audience__points li::before {
@@ -478,6 +558,151 @@ nav.primary a[aria-current='page'] { background: var(--brand-ground); color: var
   width: 6px; height: 6px; border-radius: 9999px; background: var(--brand-600);
 }
 .lp-audience__action { margin-block-start: auto; padding-block-start: 12px; font-weight: 600; font-size: .875rem; }
+
+/* --- Split feature (search that starts from requirements) --------------- */
+
+.lp-feature { display: grid; gap: 36px 48px; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); align-items: center; }
+@media (max-width: 900px) { .lp-feature { grid-template-columns: 1fr; } }
+.lp-feature__points { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.lp-feature__points li { display: flex; gap: 12px; align-items: flex-start; font-size: .9375rem; color: var(--ink-800); }
+.lp-feature__points p { margin: 0; }
+.lp-feature__points strong { display: block; color: var(--ink-900); font-size: .9375rem; }
+.lp-feature__points span { font-size: .8125rem; color: var(--ink-600); }
+.lp-feature__actions { padding-block-start: 4px; }
+
+.lp-feature__panel { position: relative; }
+.lp-feature__card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sheet);
+  box-shadow: var(--elevation-2); padding: 20px; display: flex; flex-direction: column; gap: 12px;
+}
+.lp-feature__card-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.lp-feature__checks { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lp-feature__checks li { display: flex; gap: 8px; align-items: flex-start; font-size: .8125rem; color: var(--ink-700); }
+.lp-feature__checks .icon { flex: none; color: var(--success); margin-top: 1px; }
+.lp-feature__float {
+  margin-top: -18px; margin-inline: 18px 0; align-self: flex-end;
+  width: min(240px, 78%);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card);
+  box-shadow: var(--elevation-3); padding: 12px 14px; display: flex; flex-direction: column; gap: 7px;
+  position: relative; z-index: 1;
+}
+.lp-feature__float-title { font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-600); }
+.lp-feature__float-legend { display: flex; flex-wrap: wrap; gap: 5px; }
+.lp-feature__float-legend .badge { font-size: .6875rem; padding: 1px 7px; }
+@media (max-width: 560px) { .lp-feature__float { margin-inline: 8px 0; } }
+
+/* --- Solutions orbit ------------------------------------------------------
+ *
+ * A ring of the platform's own sections around a centre mark, in place of the
+ * stock-photo-in-the-middle pattern this shape usually carries. Below 700px a
+ * six-node ring reads as noise rather than a diagram, so it collapses to a
+ * plain grid instead of shrinking in place.
+ */
+.lp-orbit { position: relative; width: min(440px, 92vw); aspect-ratio: 1; margin: 0 auto 8px; }
+.lp-orbit__ring { position: absolute; inset: 6%; border: 1px dashed var(--border-strong); border-radius: 50%; }
+.lp-orbit__core {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 108px; height: 108px; border-radius: 50%;
+  background: var(--brand-band); color: var(--brand-band-fg);
+  display: grid; place-items: center; text-align: center; padding: 10px;
+  font-weight: 700; font-size: .8125rem; letter-spacing: -.01em; box-shadow: var(--elevation-3);
+}
+.lp-orbit__node {
+  position: absolute; top: 50%; left: 50%; width: 86px; height: 86px; margin: -43px;
+  transform: rotate(var(--a)) translate(var(--r)) rotate(calc(-1 * var(--a)));
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  border-radius: 50%; background: var(--surface); border: 1px solid var(--border);
+  box-shadow: var(--elevation-2); text-decoration: none; color: var(--ink-900);
+  font-size: .6875rem; font-weight: 600; text-align: center; padding: 6px;
+  transition: transform 150ms cubic-bezier(.16,1,.3,1), border-color 150ms, box-shadow 150ms;
+}
+.lp-orbit__node .icon { color: var(--brand-600); }
+.lp-orbit__node:hover, .lp-orbit__node:focus-visible {
+  border-color: var(--brand-600); box-shadow: var(--elevation-3);
+  transform: rotate(var(--a)) translate(var(--r)) rotate(calc(-1 * var(--a))) scale(1.06);
+}
+@media (prefers-reduced-motion: reduce) { .lp-orbit__node { transition: none; } }
+@media (max-width: 700px) {
+  .lp-orbit {
+    position: static; width: 100%; aspect-ratio: auto;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .lp-orbit__ring { display: none; }
+  .lp-orbit__core { display: none; }
+  .lp-orbit__node { position: static; transform: none !important; margin: 0; width: auto; height: auto; aspect-ratio: 1; }
+}
+@media (max-width: 420px) { .lp-orbit { grid-template-columns: repeat(2, 1fr); } }
+
+.lp-solutions__grid { margin-block-start: 12px; }
+.lp-solutions__item { display: flex; gap: 12px; align-items: flex-start; }
+.lp-solutions__item h3 { font-size: 1rem; }
+.lp-solutions__item h3 a { text-decoration: none; }
+.lp-solutions__item h3 a:hover { text-decoration: underline; }
+
+/* --- Voices (from the guide network) ------------------------------------- */
+
+.lp-voices { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.lp-voice {
+  display: flex; flex-direction: column; gap: 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sheet);
+  padding: 22px; box-shadow: var(--elevation-1);
+}
+.lp-voice__mark { font-size: 2.25rem; line-height: 1; color: var(--brand-200); font-family: Georgia, serif; }
+.lp-voice__text { font-size: .9375rem; color: var(--ink-800); line-height: 1.65; }
+.lp-voice__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; flex-wrap: wrap; }
+.lp-voice__who { display: flex; align-items: center; gap: 10px; }
+.lp-voice__avatar {
+  width: 36px; height: 36px; border-radius: 50%; flex: none;
+  background: var(--brand-ground); color: var(--brand-700);
+  display: grid; place-items: center; font-weight: 700; font-size: .75rem;
+}
+.lp-voice__name-role { display: flex; flex-direction: column; line-height: 1.3; }
+.lp-voice__name { font-weight: 600; font-size: .8125rem; color: var(--ink-900); }
+.lp-voice__role { font-size: .75rem; color: var(--ink-600); }
+.lp-voice__helpful { font-size: .75rem; color: var(--ink-600); white-space: nowrap; }
+
+/* --- Verified partner cards ------------------------------------------------ */
+
+.lp-partners { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.lp-partner {
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sheet);
+  overflow: hidden; box-shadow: var(--elevation-1); text-decoration: none; color: var(--ink-900);
+  transition: transform 150ms cubic-bezier(.16,1,.3,1), box-shadow 150ms;
+}
+.lp-partner:hover { transform: translateY(-3px); box-shadow: var(--elevation-2); color: var(--ink-900); }
+.lp-partner__band {
+  height: 84px; padding: 14px; display: flex; align-items: flex-end;
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-700));
+}
+.lp-partner__mark {
+  width: 44px; height: 44px; border-radius: 12px; background: var(--surface); color: var(--brand-700);
+  display: grid; place-items: center; font-weight: 700; font-size: 1rem; box-shadow: var(--elevation-2);
+}
+.lp-partner__body { padding: 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.lp-partner__body h3 { font-size: 1rem; }
+.lp-partner__meta { font-size: .8125rem; color: var(--ink-600); }
+.lp-partner__desc { font-size: .8125rem; color: var(--ink-600); line-height: 1.5; }
+.lp-partner__chips { margin-top: auto; padding-top: 6px; }
+
+/* --- FAQ ------------------------------------------------------------------ */
+
+.lp-faq { display: flex; flex-direction: column; gap: 10px; max-width: 860px; }
+.lp-faq details {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.lp-faq details[open] { border-color: var(--border-strong); }
+.lp-faq summary {
+  cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; padding: 15px 18px; font-weight: 600; font-size: .9375rem; color: var(--ink-900);
+}
+.lp-faq summary::-webkit-details-marker { display: none; }
+.lp-faq summary:hover { background: var(--subtle); }
+.lp-faq summary .icon { flex: none; color: var(--ink-600); transition: transform 150ms; }
+.lp-faq details[open] summary .icon { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .lp-faq summary .icon { transition: none; } }
+.lp-faq__answer { padding: 0 18px 16px; font-size: .875rem; color: var(--ink-600); max-width: 68ch; }
 
 .lp-journey { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 0; padding: 0; list-style: none; }
 .lp-journey__step { display: flex; gap: 14px; align-items: flex-start; }
